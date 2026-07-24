@@ -1,0 +1,17 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "dzsc"
+authors = [
+    {name = "hamza khlaief",email = "khlaiefhamza@gmail.com"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi (>=0.139.2,<0.140.0)",
+    "uvicorn (>=0.51.0,<0.52.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
