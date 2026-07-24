@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
