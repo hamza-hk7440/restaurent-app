@@ -1,4 +1,4 @@
-from user_management.domain.interfaces.user_repo import IStudentRepository
+from user_management.domain.interfaces.user_repo import IUserRepository
 from user_management.domain.interfaces.events_repo import IEventRepository
 from user_management.application.services.password_service import IPasswordService
 from user_management.application.services.ocr_service import IOCRService
@@ -8,7 +8,7 @@ from user_management.application.exceptions.exception import (InvalidCredentials
 class LoginForStudentsUseCase:
     def __init__(
         self, 
-        student_repo: IStudentRepository, 
+        student_repo: IUserRepository, 
         event_repo: IEventRepository, 
         password_service: IPasswordService, 
         ocr_service: IOCRService, 

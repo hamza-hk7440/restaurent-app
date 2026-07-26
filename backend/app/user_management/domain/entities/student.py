@@ -2,7 +2,7 @@ from user_management.domain.exceptions.domain_exception import InvalidEntityExce
 from dataclasses import dataclass
 from datetime import datetime,timezone
 from uuid import UUID, uuid4
-
+from user_management.domain.value_objects.status import StudentStatus
 @dataclass(frozen=True)
 class Student:
     student_id: UUID
@@ -14,6 +14,9 @@ class Student:
     updated_at: datetime
     establishment:str
     registration_number:str
+    status: StudentStatus = StudentStatus.ACTIVE
+    email_verified: bool = False
+    email_verified_at: datetime = None
     @classmethod
     def create(cls, first_name: str, last_name: str, email: str, password:str, establishment:str, registration_number:str) -> 'Student':
         if not first_name or not last_name or not email or not password or not establishment or not registration_number:
@@ -28,5 +31,9 @@ class Student:
             created_at=now,
             updated_at=now,
             establishment=establishment,
-            registration_number=registration_number
+            registration_number=registration_number,
+            status=StudentStatus.ACTIVE,
+            email_verified=False,
+            email_verified_at=None
+            
         )
