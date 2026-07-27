@@ -2,14 +2,13 @@ from sqlalchemy import Column, String, Integer, Boolean, DateTime, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, timezone
-import uuid
-from user_management.infrastructure.base import BaseModel
-
+from uuid import uuid4
+from user_management.infrastructure.config.database import Base
 Base=declarative_base()
 
-class AdminModel(Base, BaseModel):
+class AdminModel(Base):
     __tablename__ = "Admins"
-
+    admin_id=Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     email = Column(String(100), unique=True, nullable=False)

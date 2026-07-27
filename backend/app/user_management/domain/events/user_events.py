@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 @dataclass(frozen=True)
 class StudentCreatedEvent(DomainEvent):
-    user_id: UUID
+    student_id: UUID
     first_name: str
     last_name: str
     email: str
@@ -30,8 +30,9 @@ class StudentInfoEditedEvent(DomainEvent):
 @dataclass(frozen=True)
 class BannedStudentEvent(DomainEvent):
     user_id: UUID
-    banned_at: datetime = datetime.now(timezone.utc)
     period_of_ban: str
+    banned_at: datetime = datetime.now(timezone.utc)
+    
 @dataclass(frozen=True)
 class UnbannedStudentEvent(DomainEvent):
     user_id: UUID

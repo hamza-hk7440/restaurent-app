@@ -1,0 +1,49 @@
+from user_management.presentation.controllers.verify_email_controller import VerifyEmailController
+from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
+from fastapi import Depends
+from supabase import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from user_management.infrastructure.config.database import DatabaseConfig
+from user_management.presentation.session import get_supabase_client
+from user_management.application.use_cases.commands.create_student_uc import CreateStudentUseCase
+from user_management.infrastructure.database.repositories.user_repository import UserRepository
+from user_management.presentation.controllers.admin_controller import AdminController
+from user_management.infrastructure.external.events import EventRepository
+from user_management.infrastructure.external.password_repository import PasswordRepository
+from user_management.infrastructure.external.jwt_repository import JWTRepository
+from user_management.infrastructure.external.send_mail_repository import SendMailForWlcAndPasswordService
+from user_management.infrastructure.external.password_generator_repository import PasswordGeneratorRepository
+from user_management.infrastructure.config.database import get_db
+from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
+def get_admin_controller(
+        db_session: AsyncSession = Depends(get_db),  
+) -> AdminController:
+    user_repo = UserRepository(db_session=db_session)
+    event_repo = EventRepository()
+    password_repo = PasswordRepository()
+    jwt_repo = JWTRepository()
+    send_mail_repo = SendMailForWlcAndPasswordService()
+    password_generator_repo = PasswordGeneratorRepository()
+    create_student_uc = CreateStudentUseCase(
+        student_repo=user_repo,
+        event_repo=event_repo,
+        password_service=password_repo,
+        jwt_service=jwt_repo,
+        send_mail_service=send_mail_repo,
+        password_generator_service=password_generator_repo
+    )
+    return AdminController(create_student_uc=create_student_uc)
+def get_verify_email_controller(
+        db_session: AsyncSession = Depends(get_db),
+) -> VerifyEmailController:
+    student_repo = UserRepository(db_session=db_session)
+    send_mail_service = SendMailForWlcAndPasswordService()
+    password_service = PasswordRepository()
+    password_generator_service = PasswordGeneratorRepository()
+    service = VerifyEmailRepository(
+        user_repo=student_repo,
+        send_mail_service=send_mail_service,
+        password_service=password_service,
+        password_generator_service=password_generator_service
+    )
+    return VerifyEmailController(verify_email_service=service)

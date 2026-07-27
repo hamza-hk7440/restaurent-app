@@ -10,3 +10,4 @@ class ISendMailForWlcAndPasswordService(ABC):
     @abstractmethod
     async def send_verification_email(self,receiver_mail:str) -> str:
         pass
+    

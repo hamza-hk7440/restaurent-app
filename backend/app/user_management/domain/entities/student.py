@@ -14,11 +14,11 @@ class Student:
     updated_at: datetime
     establishment:str
     registration_number:str
-    status: StudentStatus = StudentStatus.ACTIVE
+    status: StudentStatus 
     email_verified: bool = False
     email_verified_at: datetime = None
     @classmethod
-    def create(cls, first_name: str, last_name: str, email: str, password:str, establishment:str, registration_number:str) -> 'Student':
+    def create(cls, first_name: str, last_name: str, email: str, password:str, establishment:str, registration_number:str, status: StudentStatus) -> 'Student':
         if not first_name or not last_name or not email or not password or not establishment or not registration_number:
             raise InvalidEntityException("All fields are required to create a Student.")
         now = datetime.now(timezone.utc)
@@ -32,7 +32,7 @@ class Student:
             updated_at=now,
             establishment=establishment,
             registration_number=registration_number,
-            status=StudentStatus.ACTIVE,
+            status=status,
             email_verified=False,
             email_verified_at=None
             

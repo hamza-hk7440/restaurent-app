@@ -60,3 +60,7 @@ class InvalidVerificationTokenException(UserManagementException):
     """Exception raised when a verification token is invalid."""
     def __init__(self, message: str = "Invalid verification token", error_code: str = "INVALID_VERIFICATION_TOKEN"):
         super().__init__(message, error_code)
+class  InvalidImageError(UserManagementException):
+    """Exception raised when an image is invalid."""
+    def __init__(self, message: str = "Invalid image", error_code: str = "INVALID_IMAGE"):
+        super().__init__(message, error_code)
