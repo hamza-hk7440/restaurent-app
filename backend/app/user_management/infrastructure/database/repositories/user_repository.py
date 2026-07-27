@@ -1,8 +1,10 @@
 from operator import and_
 from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from datetime import datetime
+from unittest import result
+from user_management.infrastructure.database.models import student_model
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_
+from datetime import datetime, timezone
 from user_management.infrastructure.database.models.student_model import StudentModel
 from user_management.infrastructure.database.repositories.base_repository import BaseRepository
 from user_management.domain.value_objects.status import StudentStatus
@@ -13,167 +15,179 @@ from user_management.domain.entities.punishment import Punishment
 from user_management.infrastructure.database.models.punishment_model import PunishmentModel
 from user_management.infrastructure.database.models.admin_model import AdminModel
 from uuid import UUID
-class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],BaseRepository[PunishmentModel], IUserRepository):
-    def __init__(self, db_session: Session):
-       
-        self.db = db_session
-    
-    
-    async def exists(self, entity_id: str) -> bool:
-       
-        try:
-            student_uuid = UUID(entity_id)
-        except ValueError:
-            return False
-        
-        return self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first() is not None
 
+class UserRepository(IUserRepository):
+    def __init__(self, db_session: AsyncSession):
+        self.db = db_session
+
+    def _normalize_uuid(self, value):
+        if isinstance(value, UUID):
+            return value
+        return UUID(str(value))
     
-    async def create_student(self, student: Student) -> None:
-        
+    async def exists(self, registration_number: str) -> bool:
+        print(f"[debug][user_repo.exists] checking registration_number={registration_number}")        
+        result = await self.db.execute(
+            select(StudentModel.student_id).filter(
+                StudentModel.registration_number == registration_number
+            )
+        )
+        found = result.first() is not None
+        print(f"[debug][user_repo.exists] found={found}")
+        return found
+
+    async def create_student(
+        self,
+        first_name: str = None,
+        last_name: str = None,
+        email: str = None,
+        registration_number: str = None,
+        establishment: str = None,
+        hashed_password: str = None,
+        status: StudentStatus = StudentStatus.ACTIVE,
+        **kwargs
+    ) -> StudentModel:
+        if "student" in kwargs and kwargs["student"] is not None:
+            student = kwargs["student"]
+            first_name = getattr(student, "first_name", first_name)
+            last_name = getattr(student, "last_name", last_name)
+            email = getattr(student, "email", email)
+            registration_number = getattr(student, "registration_number", registration_number)
+            establishment = getattr(student, "establishment", establishment)
+            hashed_password = getattr(student, "password", hashed_password)
+            status = getattr(student, "status", status)
+
+        print(f"[debug][user_repo.create_student] start email={email} registration_number={registration_number} status={status}")
         student_model = StudentModel(
-            id=student.student_id,
-            first_name=student.first_name,
-            last_name=student.last_name,
-            email=student.email,
-            password=student.password,
-            establishment=student.establishment,
-            registration_number=student.registration_number,
-            status=student.status,
-            email_verified=student.email_verified,
-            email_verified_at=student.email_verified_at,
-            is_admin_created=student.is_admin_created,
-            must_change_password=student.must_change_password,
-            password_created_at=student.password_created_at,
-            temporary_password_expires=student.temporary_password_expires,
-            balance_cents=student.balance_cents,
-            is_active=student.is_active
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            registration_number=registration_number,
+            establishment=establishment,
+            password_hash=hashed_password,
+            status=status
         )
         
-        self.db.add(student_model)
-        self.db.commit()
+        # ASYNC operations:
+        print("[debug][user_repo.create_student] adding model")
+        self.db.add(student_model)  
+        print("[debug][user_repo.create_student] committing")
+        await self.db.commit()      
+        print("[debug][user_repo.create_student] refreshing")
+        await self.db.refresh(student_model)  
+        print(f"[debug][user_repo.create_student] done id={student_model.student_id}")        
+        return student_model
 
-    
     async def get_registration_number_by_student_id(self, student_id: str) -> str:
-       
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return None
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         return student.registration_number if student else None
     
     async def get_registration_number_by_student_name(self, first_name: str, last_name: str) -> str:
-        student = self.db.query(StudentModel).filter(
-            and_(
-                StudentModel.first_name == first_name,
-                StudentModel.last_name == last_name
+        result = await self.db.execute(
+            select(StudentModel).filter(
+                and_(
+                    StudentModel.first_name == first_name,
+                    StudentModel.last_name == last_name
+                )
             )
-        ).first()
+        )
+        student = result.scalars().first()
         
         return student.registration_number if student else None
     
     async def get_registration_number_by_email(self, email: str) -> str:
-        student = self.db.query(StudentModel).filter(
-            StudentModel.email == email.lower()
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.email == email.lower())
+        )
+        student = result.scalars().first()
         
         return student.registration_number if student else None
    
     async def get_establishment_by_student_id(self, student_id: str) -> str:
-        
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return None
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         return student.establishment if student else None
     
     async def get_establishment_by_registration_number(self, registration_number: str) -> str:
-       
-        student = self.db.query(StudentModel).filter(
-            StudentModel.registration_number == registration_number
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.registration_number == registration_number)
+        )
+        student = result.scalars().first()
         
         return student.establishment if student else None
-    
    
     async def edit_first_name(self, student_id: str, first_name: str) -> None:
-       
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         if student:
             student.first_name = first_name
             student.updated_at = datetime.utcnow()
-            self.db.commit()
+            await self.db.commit()
     
     async def edit_last_name(self, student_id: str, last_name: str) -> None:
-       
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         if student:
             student.last_name = last_name
             student.updated_at = datetime.utcnow()
-            self.db.commit()
+            await self.db.commit()
     
     async def edit_email(self, student_id: str, email: str) -> None:
-
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         if student:
             student.email = email.lower()
             student.email_verified = False
             student.email_verified_at = None
             student.updated_at = datetime.utcnow()
-            self.db.commit()
+            await self.db.commit()
     
-    async def change_password(self, student_id: str, password: str) -> None:
-
-        try:
-            student_uuid = UUID(student_id)
-        except ValueError:
-            return
-        
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
-        
-        if student:
-            student.password = password
-            student.must_change_password = False
-            student.updated_at = datetime.utcnow()
-            self.db.commit()
+    async def change_password(self, student_id, new_password_hash: str) -> None:
+        db_student = await self.db.get(StudentModel, self._normalize_uuid(student_id))
+        if db_student:
+            db_student.password_hash = new_password_hash
+            await self.db.commit()
     
     async def edit_student_infos(
         self,
@@ -182,18 +196,19 @@ class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],
         last_name: str = None,
         email: str = None,
         establishment: str = None,
+        status: StudentStatus = None,
         email_verified: bool = None,
         email_verified_at: datetime = None
     ) -> None:
-
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
+        )
+        student = result.scalars().first()
         
         if not student:
             return
@@ -209,7 +224,11 @@ class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],
         
         if establishment is not None:
             student.establishment = establishment
-        
+
+        if status is not None:
+            student.status = status
+            student.is_active = status != StudentStatus.BANNED
+
         if email_verified is not None:
             student.email_verified = email_verified
         
@@ -217,120 +236,118 @@ class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],
             student.email_verified_at = email_verified_at
         
         student.updated_at = datetime.utcnow()
-        self.db.commit()
+        await self.db.commit()
 
-    
     async def get_student_by_id(self, student_id: str) -> Optional[Student]:
-
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return None
         
-        model = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        model = result.scalars().first()
         
         return self._map_to_entity(model) if model else None
     
     async def get_student_by_email(self, email: str) -> Optional[Student]:
- 
-        model = self.db.query(StudentModel).filter(
-            StudentModel.email == email.lower()
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.email == email.lower())
+        )
+        model = result.scalars().first()
         
         return self._map_to_entity(model) if model else None 
-    async def get_student_info_by_name(self, first_name: str, last_name: str) -> List[Student]:
 
-        models = self.db.query(StudentModel).filter(
-            and_(
-                StudentModel.first_name == first_name,
-                StudentModel.last_name == last_name
+    async def get_student_info_by_name(self, first_name: str, last_name: str) -> List[Student]:
+        result = await self.db.execute(
+            select(StudentModel).filter(
+                and_(
+                    StudentModel.first_name == first_name,
+                    StudentModel.last_name == last_name
+                )
             )
-        ).all()
+        )
+        models = result.scalars().all()
         
         return [self._map_to_entity(model) for model in models]
     
     async def get_student_info_by_registration_number(self, registration_number: str) -> List[Student]:
-
-        models = self.db.query(StudentModel).filter(
-            StudentModel.registration_number == registration_number
-        ).all()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.registration_number == registration_number)
+        )
+        models = result.scalars().all()
         
         return [self._map_to_entity(model) for model in models]
     
     async def get_students_by_establishment(self, establishment: str) -> List[Student]:
-
-        models = self.db.query(StudentModel).filter(
-            StudentModel.establishment == establishment
-        ).all()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.establishment == establishment)
+        )
+        models = result.scalars().all()
         
         return [self._map_to_entity(model) for model in models]
     
     async def get_all_students(self) -> List[Student]:
-
-        models = self.db.query(StudentModel).filter(
-            StudentModel.is_active == True
-        ).all()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.is_active == True)
+        )
+        models = result.scalars().all()
         
         return [self._map_to_entity(model) for model in models]
     
- 
     async def get_student_status(self, student_id: str) -> Optional[StudentStatus]:
-      
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return None
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         return student.status if student else None
     
     async def edit_student_status(self, student_id: str, status: StudentStatus) -> Student:
-       
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return None
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         if student:
             student.status = status
-            # Auto-disable if banned
             if status == StudentStatus.BANNED:
                 student.is_active = False
             elif status == StudentStatus.ACTIVE:
                 student.is_active = True
             
             student.updated_at = datetime.utcnow()
-            self.db.commit()
+            await self.db.commit()
             
             return self._map_to_entity(student)
         
         return None
     
-    
     async def get_punishments_by_student_id(self, student_id: str) -> List[Punishment]:
-       
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return []
         
-        punishments = self.db.query(PunishmentModel).filter(
-            PunishmentModel.student_id == student_uuid
-        ).all()
+        result = await self.db.execute(
+            select(PunishmentModel).filter(PunishmentModel.student_id == student_uuid)
+        )
+        punishments = result.scalars().all()
         
         return [self._map_punishment_to_entity(p) for p in punishments]
     
     async def ban_student(self, punishment: Punishment) -> None:
-       
         punishment_model = PunishmentModel(
             id=punishment.punishment_id,
             student_id=punishment.student_id,
@@ -340,53 +357,45 @@ class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],
         
         self.db.add(punishment_model)
         
-        # Update student status
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == punishment.student_id
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == punishment.student_id)
+        )
+        student = result.scalars().first()
         
         if student:
             student.status = StudentStatus.BANNED
             student.is_active = False
             student.updated_at = datetime.utcnow()
         
-        self.db.commit()
+        await self.db.commit()
     
     async def unban_student(self, student_id: str) -> None:
-       
         try:
-            student_uuid = UUID(student_id)
+            student_uuid = self._normalize_uuid(student_id)
         except ValueError:
             return
         
-        student = self.db.query(StudentModel).filter(
-            StudentModel.id == student_uuid
-        ).first()
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.id == student_uuid)
+        )
+        student = result.scalars().first()
         
         if student:
             student.status = StudentStatus.ACTIVE
             student.is_active = True
             student.updated_at = datetime.utcnow()
-            self.db.commit()
+            await self.db.commit()
     
-   
     async def get_all_admins(self) -> List[Admin]:
-       
-        models = self.db.query(AdminModel).all()
+        result = await self.db.execute(select(AdminModel))
+        models = result.scalars().all()
         
         return [self._map_admin_to_entity(model) for model in models]
-
     
     async def logout_user(self, student_id: str) -> None:
-       
         pass
     
-    # ============================================
-    # PRIVATE HELPER METHODS
-    # ============================================
-    
     def _map_to_entity(self, model: StudentModel) -> Optional[Student]:
-       
         if not model:
             return None
         
@@ -412,7 +421,6 @@ class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],
         )
     
     def _map_admin_to_entity(self, model: AdminModel) -> Optional[Admin]:
-       
         return Admin(
             admin_id=model.id,
             email=model.email,
@@ -423,7 +431,6 @@ class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],
         )
     
     def _map_punishment_to_entity(self, model: PunishmentModel) -> Optional[Punishment]:
-        
         if not model:
             return None
         
@@ -433,4 +440,20 @@ class StudentRepository(BaseRepository[StudentModel],BaseRepository[AdminModel],
             reason=model.reason,
             created_at=model.created_at
         )
- 
+    async def save_verification_token(self, student_id: str, token: str) -> None:
+        db_student = await self.db.get(StudentModel, self._normalize_uuid(student_id))
+        if db_student:
+            db_student.verification_token = token
+            await self.db.commit()
+    async def get_by_verification_token(self, token: str):
+        stmt = select(StudentModel).where(StudentModel.verification_token == token)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def mark_email_as_verified(self, student_id: str) -> None:
+        db_student = await self.db.get(StudentModel, self._normalize_uuid(student_id))
+        if db_student:
+            db_student.email_verified = True
+            db_student.email_verified_at = datetime.now(timezone.utc)
+            db_student.verification_token = None  # Clear the token after use
+            await self.db.commit()

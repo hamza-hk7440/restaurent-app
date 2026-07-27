@@ -11,10 +11,10 @@ class IJWTService(ABC):
     def verify_token(self, token: str) ->Optional[str]:
         pass
     @abstractmethod
-    def generate_verification_token(self, email: str, expires_delta: Optional[timedelta]) -> str:
+    def generate_verification_token() -> str:
         pass
     @abstractmethod
-    def generate_password_reset_token(self, email: str, expires_delta: Optional[timedelta]) -> str:
+    def generate_password_reset_token() -> str:
         pass
     @abstractmethod
     def is_token_expired(self, expires_at: datetime) -> bool:
@@ -30,4 +30,7 @@ class IJWTService(ABC):
         pass
     @abstractmethod
     async def delete_token(self, token: str) -> None:
+        pass
+    @abstractmethod
+    async def get_token_expiry_time():
         pass
