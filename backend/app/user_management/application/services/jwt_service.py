@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from datetime import timedelta,datetime
+from datetime import datetime
 from typing import Optional
+from user_management.domain.value_objects.token_type import TokenType
 
 class IJWTService(ABC):
     @abstractmethod
-    def generate_token(self, user_id: str,expires_delta:Optional[timedelta]) -> str:
+    def generate_token(self, user_id: str) -> str:
         pass
 
     @abstractmethod
@@ -20,7 +21,7 @@ class IJWTService(ABC):
     def is_token_expired(self, expires_at: datetime) -> bool:
         pass
     @abstractmethod
-    async def save_token(self, token: str, expires_at: datetime) -> None:
+    async def save_token(self, user_id: str, token: str, expires_at: datetime, token_type: TokenType = TokenType.REFRESH) -> None:
         pass
     @abstractmethod
     async def verify_verification_token(self, token: str) -> Optional[str]:

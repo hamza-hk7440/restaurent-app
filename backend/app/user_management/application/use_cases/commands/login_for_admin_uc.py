@@ -18,5 +18,7 @@ class LoginForAdminUseCase:
         if not admin or not self.password_service.verify_password(password, admin.password):
             raise InvalidCredentialsException("Invalid email or password.")
 
-        token = self.jwt_service.generate_token(user_id=str(admin.admin_id), expires_delta=None)
+        token = self.jwt_service.generate_token(user_id=str(admin.admin_id))
+        expires_at = await self.jwt_service.get_token_expiry_time()
+        await self.jwt_service.save_token(str(admin.admin_id), token, expires_at)
         return token

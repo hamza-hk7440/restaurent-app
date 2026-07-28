@@ -5,8 +5,9 @@ import numpy as np
 from abc import ABC, abstractmethod
 import logging
 import os
+import shutil
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 import re
 from user_management.infrastructure.config.settings import get_settings
 logger = logging.getLogger(__name__)
@@ -17,17 +18,43 @@ class OCRRepository(IOCRService):
     def __init__(self):
         self.settings = get_settings()
         self._set_tesseract_path()
-        self._validate_tesseract_installed()
     def _set_tesseract_path(self) -> None:
+        candidates = []
 
-        tesseract_path = self.settings.TESSERACT_PATH
-        
-        if tesseract_path and os.path.exists(tesseract_path):
-            pytesseract.pytesseract.pytesseract_cmd = tesseract_path
-            logger.info(f"Tesseract path set to: {tesseract_path}")
-        else:
-            logger.warning(f"Tesseract path not found: {tesseract_path}")
-            logger.info("Trying system default Tesseract location...")
+        configured_path = getattr(self.settings, "TESSERACT_PATH", None)
+        if configured_path:
+            candidates.append(configured_path)
+
+        candidates.extend(
+            [
+                r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+                r"C:\\Program Files (x86)\\Tesseract-OCR\\tesseract.exe",
+                "tesseract",
+            ]
+        )
+
+        for candidate in candidates:
+            expanded_candidate = os.path.expandvars(os.path.expanduser(candidate))
+
+            if expanded_candidate == "tesseract":
+                resolved = shutil.which("tesseract")
+                if resolved:
+                    pytesseract.pytesseract.tesseract_cmd = resolved
+                    logger.info(f"Tesseract path resolved from PATH: {resolved}")
+                    return
+                continue
+
+            if os.path.exists(expanded_candidate):
+                pytesseract.pytesseract.tesseract_cmd = expanded_candidate
+                logger.info(f"Tesseract path set to: {expanded_candidate}")
+                return
+
+            logger.warning(f"Tesseract candidate not found: {expanded_candidate}")
+
+        logger.warning(
+            "Tesseract executable could not be resolved. "
+            f"Configured value={configured_path!r}, current_cmd={getattr(pytesseract.pytesseract, 'tesseract_cmd', None)!r}"
+        )
     
     def _validate_tesseract_installed(self) -> None:
         
@@ -35,6 +62,11 @@ class OCRRepository(IOCRService):
             version = pytesseract.get_tesseract_version()
             logger.info(f"Tesseract version: {version}")
         except pytesseract.TesseractNotFoundError:
+            logger.error(
+                "Tesseract OCR not found. "
+                f"Configured path: {self.settings.TESSERACT_PATH!r}. "
+                f"Current command: {getattr(pytesseract.pytesseract, 'tesseract_cmd', None)!r}"
+            )
             logger.error("Tesseract OCR not installed or not found in PATH")
             raise OCRScanFailedException(
                 "Tesseract OCR engine not installed. "
@@ -45,6 +77,7 @@ class OCRRepository(IOCRService):
     def extract_student_id_from_card(self, image_path: str) -> str:
         
         try:
+            self._validate_tesseract_installed()
             # Step 1: Validate image file
             self._validate_image_file(image_path)
             
@@ -54,13 +87,18 @@ class OCRRepository(IOCRService):
             # Step 3: Preprocess image for better OCR accuracy
             processed_image = self._preprocess_image(image)
             
-            # Step 4: Extract text using Tesseract
-            extracted_text = self._extract_text_from_image(processed_image)
-            
-            logger.debug(f"Extracted raw text: {extracted_text}")
-            
-            # Step 5: Parse and extract student ID
-            student_id = self._parse_student_id(extracted_text)
+            # Step 4: Extract text using Tesseract across multiple orientations
+            extracted_text = ""
+            student_id = None
+            for label, candidate_image in self._generate_ocr_candidates(processed_image):
+                extracted_text, words = self._extract_text_and_words(candidate_image)
+                logger.debug(f"OCR extracted text ({label}) full: {extracted_text!r}")
+                logger.debug(f"Extracted raw text ({label}): {extracted_text}")
+
+                student_id = self._parse_student_id(extracted_text, words)
+                if student_id:
+                    logger.info(f"Student ID extracted using orientation: {label}")
+                    break
             
             if not student_id:
                 raise UserNotFoundException(
@@ -147,25 +185,62 @@ class OCRRepository(IOCRService):
         
         logger.debug(f"Image preprocessed: shape={morph.shape}")
         return morph
+
+    def _generate_ocr_candidates(self, image: np.ndarray):
+        yield "original", image
+        yield "rotated_90_cw", cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        yield "rotated_90_ccw", cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        yield "rotated_180", cv2.rotate(image, cv2.ROTATE_180)
+        height, width = image.shape[:2]
+        crops = {
+            "bottom_half": image[height // 2 :, :],
+            "bottom_left_quarter": image[height // 2 :, : width // 2],
+            "bottom_right_quarter": image[height // 2 :, width // 2 :],
+            "center_band": image[height // 4 : (3 * height) // 4, :],
+        }
+        for label, crop in crops.items():
+            if crop.size:
+                yield label, crop
     
     
-    def _extract_text_from_image(self, image: np.ndarray) -> str:
+    def _extract_text_and_words(self, image: np.ndarray) -> tuple[str, list[dict[str, Any]]]:
         
         try:
-            # Extract text with high PSM (Page Segmentation Mode)
-            # PSM 6 = Assume a single uniform block of text
-            config = '--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789'
+            # Extract full text and word boxes so we can find a 6-digit number
+            # near the registration label even if OCR is noisy.
+            config = '--psm 11 --oem 3'
             
             text = pytesseract.image_to_string(image, config=config)
+            data = pytesseract.image_to_data(image, config=config, output_type=Output.DICT)
+            words: list[dict[str, Any]] = []
+            for i, raw_text in enumerate(data.get("text", [])):
+                cleaned = (raw_text or "").strip()
+                if not cleaned:
+                    continue
+                conf_raw = data.get("conf", ["-1"])[i]
+                try:
+                    confidence = float(conf_raw)
+                except (TypeError, ValueError):
+                    confidence = -1.0
+                words.append(
+                    {
+                        "text": cleaned,
+                        "left": int(data.get("left", [0])[i]),
+                        "top": int(data.get("top", [0])[i]),
+                        "width": int(data.get("width", [0])[i]),
+                        "height": int(data.get("height", [0])[i]),
+                        "conf": confidence,
+                    }
+                )
             
-            return text.strip()
+            return text.strip(), words
         
         except Exception as e:
             raise OCRScanFailedException(f"Tesseract OCR failed: {str(e)}")
     
 
     
-    def _parse_student_id(self, text: str) -> Optional[str]:
+    def _parse_student_id(self, text: str, words: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
        
         if not text:
             return None
@@ -175,46 +250,103 @@ class OCRRepository(IOCRService):
         
         logger.debug(f"Parsing text for student ID: {text[:100]}...")
         
-        # Pattern 1: Look for "ID:" or "No:" or "NUM:" followed by numbers
+        # Pattern 1: Only accept a 6-digit number after the Arabic labels.
         patterns = [
-            r'(?:ID|No|NUM|STUDENT)[:\s]+(\d{6})',  # ID: 20210001
-            r'(\d{6})',  
-            r'Registration[:\s]+(\d{6,10})',
-            r'(?:رقم الترسيم|رقم التسجيل)[:\s]+(\d{6}'
+            r'(?:رقم\s*الت[رسش]يم|رقم\s*التسجيل)[:\s#\-]*([0-9]{6})',
+            r'(?:رقم\s*الت[رسش]يم|رقم\s*التسجيل)[^\d]{0,30}([0-9]{6})',
         ]
-        
+
         for pattern in patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+            try:
+                matches = re.findall(pattern, text, re.IGNORECASE)
+            except re.error as e:
+                logger.error(f"Invalid OCR regex pattern {pattern!r}: {e}")
+                continue
+
             if matches:
-                # Return first valid match
                 student_id = matches[0]
-                
-                # Validate student ID format
-                if self._validate_student_id_format(student_id):
+
+                if self._is_plausible_student_id(student_id):
                     return student_id
-        
-        # Pattern 2: Just look for any 6-digit number
-        digits = re.findall(r'\d{6}', text)
-        if digits:
-            return digits[0]
-        
+
+        if words:
+            label_words = []
+            for word in words:
+                normalized = self._normalize_ocr_text(word["text"])
+                if self._matches_registration_label(normalized):
+                    label_words.append(word)
+
+            if label_words:
+                for label_word in label_words:
+                    candidate = self._find_nearest_six_digit_number(words, label_word)
+                    if candidate:
+                        return candidate
+
         return None
+
+    def _find_nearest_six_digit_number(self, words: List[Dict[str, Any]], label_word: Dict[str, Any]) -> Optional[str]:
+        label_x = label_word["left"]
+        label_y = label_word["top"]
+
+        best_candidate = None
+        best_score = None
+
+        for word in words:
+            candidate_text = self._normalize_ocr_text(word["text"])
+            if not re.fullmatch(r"\d{6}", candidate_text):
+                continue
+            if not self._is_plausible_student_id(candidate_text):
+                continue
+
+            dx = abs(word["left"] - label_x)
+            dy = abs(word["top"] - label_y)
+            score = (dy * 3) + dx
+
+            if best_score is None or score < best_score:
+                best_score = score
+                best_candidate = candidate_text
+
+        return best_candidate
+
+    def _normalize_ocr_text(self, text: str) -> str:
+        text = text or ""
+        text = text.strip().lower()
+        text = text.replace("0", "o")
+        text = text.replace("1", "l")
+        text = text.replace("5", "s")
+        text = text.replace("7", "t")
+        text = re.sub(r"[^a-z\u0600-\u06ff]+", "", text)
+        return text
+
+    def _matches_registration_label(self, normalized_text: str) -> bool:
+        if not normalized_text:
+            return False
+
+        label_patterns = [
+            r"رقمالترسيم",
+            r"رقمالتسجيل",
+            r"نقم\w*الترسيم",
+            r"نقم\w*التسجيل",
+            r"num",
+            r"cin",
+            r"registration",
+        ]
+
+        return any(re.search(pattern, normalized_text) for pattern in label_patterns)
     
-    def _validate_student_id_format(self, student_id: str) -> bool:
-        
-        if not student_id or len(student_id) < 6:
+    def _is_plausible_student_id(self, student_id: str) -> bool:
+        if not student_id or not student_id.isdigit():
             return False
-        
-        try:
-            year_part = int(student_id[:4])
-            
-            
-            if year_part < 2000 or year_part > 2099:
-                return False
-            
-            # Check rest are digits
-            int(student_id)
-            
-            return True
-        except ValueError:
+
+        if len(student_id) != 6:
             return False
+
+        # Reject academic-year-like values such as 202520 or 202526.
+        if student_id.startswith("2025") or student_id.startswith("2026"):
+            return False
+
+        # Reject obvious barcode or document noise.
+        if student_id in {"970770", "9707707", "202520", "202526"}:
+            return False
+
+        return True

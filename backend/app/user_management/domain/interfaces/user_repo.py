@@ -91,3 +91,6 @@ class IUserRepository(ABC):
     @abstractmethod
     async def mark_email_as_verified(self, student_id: str) -> None:
         pass
+    @abstractmethod
+    async def get_admin_by_email(self, email: str) -> Admin:
+        pass

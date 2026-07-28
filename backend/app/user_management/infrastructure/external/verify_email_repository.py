@@ -5,24 +5,29 @@ from user_management.application.services.send_mail_for_wlc_an_password_service 
 from user_management.application.services.password_service import IPasswordService
 from user_management.application.services.password_generator_service import IPasswordGeneratorService
 from user_management.domain.value_objects.status import StudentStatus
+from user_management.application.services.jwt_service import IJWTService
 class VerifyEmailRepository(IVerifyEmailService):
     def __init__(
         self, 
         user_repo: IUserRepository, 
         send_mail_service: ISendMailForWlcAndPasswordService,
         password_service: IPasswordService,
-        password_generator_service: IPasswordGeneratorService
+        password_generator_service: IPasswordGeneratorService,
+        jwt_service: IJWTService
     ):
         self.user_repo = user_repo
         self.send_mail_service = send_mail_service
         self.password_service = password_service
         self.password_generator_service = password_generator_service
+        self.jwt_service = jwt_service
 
     async def verify_email(self, token: str) -> bool:
-        student = await self.user_repo.get_by_verification_token(token)
+        student_id = await self.jwt_service.verify_verification_token(token)
+        if not student_id:
+            return False
+        student = await self.user_repo.get_student_by_id(student_id)
         if not student:
             return False
-
         password = self.password_generator_service.generate_password()
         hashed_password = self.password_service.hash_password(password)
         await self.user_repo.change_password(student.student_id, hashed_password)
@@ -31,4 +36,5 @@ class VerifyEmailRepository(IVerifyEmailService):
 
         # Only mark the account verified after all downstream work succeeds.
         await self.user_repo.mark_email_as_verified(student.student_id)
+        await self.jwt_service.delete_token(token)
         return True

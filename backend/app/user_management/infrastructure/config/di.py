@@ -50,7 +50,8 @@ class DependencyInjector:
         )
     @staticmethod
     def get_jwt_repository() -> JWTRepository:
-        return JWTRepository()
+        db=DatabaseConfig.get_session()
+        return JWTRepository(db)
     @staticmethod
     def get_send_mail_service() -> SendMailForWlcAndPasswordService:
         return SendMailForWlcAndPasswordService()

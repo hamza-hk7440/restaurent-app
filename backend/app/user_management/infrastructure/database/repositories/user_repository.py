@@ -61,7 +61,7 @@ class UserRepository(IUserRepository):
         student_model = StudentModel(
             first_name=first_name,
             last_name=last_name,
-            email=email,
+            email=email.lower(),
             registration_number=registration_number,
             establishment=establishment,
             password_hash=hashed_password,
@@ -245,7 +245,7 @@ class UserRepository(IUserRepository):
             return None
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         model = result.scalars().first()
         
@@ -394,40 +394,43 @@ class UserRepository(IUserRepository):
     
     async def logout_user(self, student_id: str) -> None:
         pass
+
+    async def save_verification_token(self, student_id: str, token: str) -> None:
+        # Verification tokens now live in the Tokens table and are handled by JWTRepository.
+        return None
+
+    async def get_by_verification_token(self, token: str):
+        # Deprecated compatibility shim.
+        return None
     
     def _map_to_entity(self, model: StudentModel) -> Optional[Student]:
         if not model:
             return None
         
         return Student(
-            student_id=model.id,
+            student_id=model.student_id,
             first_name=model.first_name,
             last_name=model.last_name,
             email=model.email,
-            password=model.password,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-            establishment=model.establishment,
             registration_number=model.registration_number,
+            establishment=model.establishment,
             status=model.status,
             email_verified=model.email_verified,
             email_verified_at=model.email_verified_at,
-            is_admin_created=model.is_admin_created,
-            must_change_password=model.must_change_password,
-            password_created_at=model.password_created_at,
-            temporary_password_expires=model.temporary_password_expires,
-            balance_cents=model.balance_cents,
-            is_active=model.is_active
+            password=model.password_hash,
+            balance=model.balance,
+            created_at=model.created_at,
+            updated_at=model.updated_at
+            
         )
     
     def _map_admin_to_entity(self, model: AdminModel) -> Optional[Admin]:
         return Admin(
-            admin_id=model.id,
+            admin_id=model.admin_id,
             email=model.email,
-            first_name=model.first_name,
-            last_name=model.last_name,
+            username=model.username,
             created_at=model.created_at,
-            updated_at=model.updated_at
+            password=model.password
         )
     
     def _map_punishment_to_entity(self, model: PunishmentModel) -> Optional[Punishment]:
@@ -440,20 +443,16 @@ class UserRepository(IUserRepository):
             reason=model.reason,
             created_at=model.created_at
         )
-    async def save_verification_token(self, student_id: str, token: str) -> None:
-        db_student = await self.db.get(StudentModel, self._normalize_uuid(student_id))
-        if db_student:
-            db_student.verification_token = token
-            await self.db.commit()
-    async def get_by_verification_token(self, token: str):
-        stmt = select(StudentModel).where(StudentModel.verification_token == token)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def mark_email_as_verified(self, student_id: str) -> None:
         db_student = await self.db.get(StudentModel, self._normalize_uuid(student_id))
         if db_student:
             db_student.email_verified = True
             db_student.email_verified_at = datetime.now(timezone.utc)
-            db_student.verification_token = None  # Clear the token after use
             await self.db.commit()
+    async def get_admin_by_email(self, email: str) -> Optional[Admin]:
+        result = await self.db.execute(
+            select(AdminModel).filter(AdminModel.email == email.lower())
+        )
+        model = result.scalars().first()
+        
+        return self._map_admin_to_entity(model) if model else None
