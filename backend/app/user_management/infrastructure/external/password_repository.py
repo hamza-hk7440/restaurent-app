@@ -5,12 +5,34 @@ from user_management.application.services.password_service import IPasswordServi
 class PasswordRepository(IPasswordService):
     @staticmethod
     def hash_password(password: str) -> str:
-        salt=gensalt(rounds=12)
-        hashed_password = hashpw(password.encode('utf-8'), salt)
-        return hashed_password.decode('utf-8')
+        normalized_password = password.strip()
+        salt = gensalt(rounds=12)
+        hashed_password = hashpw(normalized_password.encode("utf-8"), salt)
+        return hashed_password.decode("utf-8")
+
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        if plain_password is None or hashed_password is None:
+            return False
+
+        normalized_password = plain_password.strip()
+        normalized_hash = hashed_password.strip()
+
+        if isinstance(normalized_hash, bytes):
+            hashed_bytes = normalized_hash
+        else:
+            hashed_bytes = normalized_hash.encode("utf-8")
+
+        if isinstance(normalized_password, bytes):
+            password_bytes = normalized_password
+        else:
+            password_bytes = normalized_password.encode("utf-8")
+
+        try:
+            return checkpw(password_bytes, hashed_bytes)
+        except ValueError:
+            return False
+
     @staticmethod
     def validate_password_strength(password: str) -> bool:
         # Password strength criteria:

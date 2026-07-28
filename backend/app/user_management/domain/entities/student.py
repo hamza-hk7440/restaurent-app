@@ -17,6 +17,7 @@ class Student:
     status: StudentStatus 
     email_verified: bool = False
     email_verified_at: datetime = None
+    balance: int = 0
     @classmethod
     def create(cls, first_name: str, last_name: str, email: str, password:str, establishment:str, registration_number:str, status: StudentStatus) -> 'Student':
         if not first_name or not last_name or not email or not password or not establishment or not registration_number:

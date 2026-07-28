@@ -27,13 +27,14 @@ class ForgetPasswordUseCase:
         user = await self.user_repo.get_student_by_email(email)
         if not user:
             raise UserNotFoundException("User with the provided email does not exist.")        
-        reset_token = self.jwt_service.generate_password_reset_token(email)
-        await self.jwt_service.save_token(reset_token, expires_at=None) 
+        reset_token = self.jwt_service.generate_password_reset_token()
+        expires_at = await self.jwt_service.get_token_expiry_time()
+        await self.jwt_service.save_token(str(user.student_id), reset_token, expires_at)
         reset_link=f"https://your-app.com/reset-password?token={reset_token}"
         await self.send_mail_service.send_password_reset_email(email, reset_link)
         return {"message": "Password reset email sent successfully."}
     async def reset_password(self, token: str, new_password: str) -> None:
-        student_id=self.jwt_service.verify_password_reset_token(token)
+        student_id=await self.jwt_service.verify_password_reset_token(token)
         if not student_id:
             raise InvalidTokenException("Invalid or expired token.")
         hashed=self.password_service.hash_password(new_password)
@@ -43,5 +44,6 @@ class ForgetPasswordUseCase:
         await self.user_repo.change_password(student_id,hashed)
         event=PasswordChangedEvent(student_id=student_id)
         await self.event_repo.dispatch(event)
+        await self.jwt_service.delete_token(token)
         return {"message": "Password reset successfully."}
         

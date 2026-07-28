@@ -9,10 +9,10 @@ Base=declarative_base()
 class AdminModel(Base):
     __tablename__ = "Admins"
     admin_id=Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    first_name = Column(String(50), nullable=False)
-    last_name = Column(String(50), nullable=False)
+    username=Column(String(50), unique=True, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    password= Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
     def __repr__(self):
-        return f"<AdminModel(id={self.id}, first_name={self.first_name}, last_name={self.last_name}, email={self.email}, is_super_admin={self.is_super_admin})>"
+        return f"<AdminModel(id={self.id}, username={self.username}, email={self.email})>"

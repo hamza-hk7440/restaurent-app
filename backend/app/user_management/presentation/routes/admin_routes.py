@@ -20,4 +20,12 @@ async def create_student(
 
     token = await admin_controller.create_student(first_name, last_name, email, registration_number, establishment)
     return {"token": token}
+@router.post("/login", status_code=status.HTTP_200_OK)
+async def login_for_admin(
+    email: str,
+    password: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    token = await admin_controller.login_for_admin(email, password)
+    return {"token": token}
 

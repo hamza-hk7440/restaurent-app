@@ -9,6 +9,7 @@ from user_management.application.services.password_generator_service import IPas
 import traceback
 import re
 from user_management.domain.value_objects.status import StudentStatus
+from user_management.domain.value_objects.token_type import TokenType
 
 class CreateStudentUseCase:
     def __init__(
@@ -97,12 +98,20 @@ class CreateStudentUseCase:
         print("[debug][create_student][uc] sending verification email")
         try:
             verification_token = await self.send_mail_service.send_verification_email(email)
-            await self.student_repo.save_verification_token(student.student_id, verification_token)
+            verification_expires_at = await self.jwt_service.get_token_expiry_time()
+            await self.jwt_service.save_token(
+                str(student.student_id),
+                verification_token,
+                verification_expires_at,
+                token_type=TokenType.VERIFICATION
+            )
         except Exception as e:
             print(f"[debug][create_student][uc] verification email failed: {e}")
             raise RuntimeError(f"create_student failed at verification email: {e}") from e
 
         print("[debug][create_student][uc] generating token")
         token = self.jwt_service.generate_token(user_id=str(student.student_id))
+        expires_at = await self.jwt_service.get_token_expiry_time()
+        await self.jwt_service.save_token(str(student.student_id), token, expires_at)
         print("[debug][create_student][uc] done")
         return token
