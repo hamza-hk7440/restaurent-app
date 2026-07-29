@@ -11,7 +11,8 @@ class PunishmentModel(Base):
     student_id = Column(UUID(as_uuid=True), nullable=False)
     admin_id = Column(UUID(as_uuid=True), nullable=False)
     reason = Column(String(255), nullable=False)
-    period_of_ban = Column(String(50), nullable=False)
+    period_of_ban = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), nullable=False)
 
     def __repr__(self):
-        return f"<PunishmentModel(id={self.id}, student_id={self.student_id}, admin_id={self.admin_id}, reason={self.reason}, period_of_ban={self.period_of_ban})>"
+        return f"<PunishmentModel(id={self.punishment_id}, student_id={self.student_id}, admin_id={self.admin_id}, reason={self.reason}, period_of_ban={self.period_of_ban})>"

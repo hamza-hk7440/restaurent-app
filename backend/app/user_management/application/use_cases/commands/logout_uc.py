@@ -1,5 +1,5 @@
 from user_management.domain.interfaces.user_repo import IUserRepository
-from user_management.application.exceptions.exception import UserNotFoundException
+from user_management.application.exceptions.exception import InvalidTokenException
 from user_management.application.services.jwt_service import IJWTService
 
 class LogoutUseCase:
@@ -8,8 +8,8 @@ class LogoutUseCase:
         self.jwt_service = jwt_service
 
     async def execute(self, token: str) -> None:
-        student_id = self.jwt_service.verify_token(token)
+        student_id = await self.jwt_service.verify_refresh_token(token)
         if not student_id:
-            raise UserNotFoundException("User not found.")
+            raise InvalidTokenException("Invalid token.")
 
-        await self.user_repo.logout_user(student_id)
+        await self.jwt_service.delete_token(token)

@@ -19,7 +19,7 @@ from user_management.domain.interfaces.user_repo import IUserRepository
 from user_management.domain.entities.punishment import Punishment
 from user_management.infrastructure.database.models.punishment_model import PunishmentModel
 from user_management.infrastructure.database.models.admin_model import AdminModel
-from uuid import UUID
+from uuid import UUID, uuid4, uuid4
 
 class UserRepository(IUserRepository):
     def __init__(self, db_session: AsyncSession):
@@ -359,18 +359,20 @@ class UserRepository(IUserRepository):
         
         return [self._map_punishment_to_entity(p) for p in punishments]
     
-    async def ban_student(self, punishment: Punishment) -> None:
+    async def ban_student(self, student_id: str, reason: str, admin_id: str, period_of_ban: int) -> None:
         punishment_model = PunishmentModel(
-            id=punishment.punishment_id,
-            student_id=punishment.student_id,
-            reason=punishment.reason,
-            created_at=punishment.created_at
+            punishment_id=str(uuid4()),
+            student_id=student_id,
+            reason=reason,
+            admin_id=admin_id,
+            period_of_ban=period_of_ban,
+            created_at=datetime.utcnow()
         )
         
         self.db.add(punishment_model)
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == punishment.student_id)
+            select(StudentModel).filter(StudentModel.student_id == student_id)
         )
         student = result.scalars().first()
         
@@ -380,6 +382,7 @@ class UserRepository(IUserRepository):
             student.updated_at = datetime.utcnow()
         
         await self.db.commit()
+        return {f"Student {student_id} has been banned for {period_of_ban} days."}
     
     async def unban_student(self, student_id: str) -> None:
         try:
@@ -388,7 +391,7 @@ class UserRepository(IUserRepository):
             return
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
         
@@ -450,7 +453,7 @@ class UserRepository(IUserRepository):
             return None
         
         return Punishment(
-            punishment_id=model.id,
+            punishment_id=model.punishment_id,
             student_id=model.student_id,
             reason=model.reason,
             created_at=model.created_at

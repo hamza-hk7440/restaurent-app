@@ -28,4 +28,29 @@ async def login_for_admin(
 ):
     token = await admin_controller.login_for_admin(email, password)
     return {"token": token}
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password_by_admin(
+    student_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    result = await admin_controller.change_password_by_admin(student_id)
+    return {"message": result}
 
+@router.post("/change-email", status_code=status.HTTP_200_OK)
+async def change_email_by_admin(
+    student_id: str,
+    new_email: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.change_email_by_admin(student_id, new_email)
+    return {"message": "Email changed successfully"}
+@router.post("/ban-student", status_code=status.HTTP_200_OK)
+async def ban_student(
+    student_id: str,
+    reason: str,
+    duration: int,
+    admin_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.ban_student(admin_id=admin_id, student_id=student_id, reason=reason, duration=duration)
+    return {"message": "Student banned successfully"}
