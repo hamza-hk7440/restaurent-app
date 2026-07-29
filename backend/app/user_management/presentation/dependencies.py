@@ -1,3 +1,4 @@
+from user_management.application.use_cases.commands.change_email_by_admin_uc import ChangeEmailByAdminUseCase
 from user_management.application.use_cases.queries.display_profile_info_uc import DisplayProfileInfoUseCase
 from user_management.application.use_cases.commands.login_for_students_uc import LoginForStudentsUseCase
 from user_management.presentation.controllers.verify_email_controller import VerifyEmailController
@@ -38,6 +39,7 @@ def get_admin_controller(
     jwt_repo = JWTRepository(db_session)
     send_mail_repo = SendMailForWlcAndPasswordService()
     password_generator_repo = PasswordGeneratorRepository()
+    email_event_handler = EmailChangedEventHandler(send_mail_service=SendMailForWlcAndPasswordService())
     create_student_uc = CreateStudentUseCase(
         student_repo=user_repo,
         event_repo=event_repo,
@@ -58,7 +60,13 @@ def get_admin_controller(
         password_generator_service=password_generator_repo,
         send_mail_service=send_mail_repo
     )
-    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc)
+    change_email_by_admin_uc = ChangeEmailByAdminUseCase(
+        user_repo=user_repo,
+        events_repo=event_repo,
+        jwt_service=jwt_repo,
+        email_changed_event_handler=email_event_handler
+    )
+    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc)
 def get_verify_email_controller(
         db_session: AsyncSession = Depends(get_db),
 ) -> VerifyEmailController:

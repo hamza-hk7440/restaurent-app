@@ -36,3 +36,11 @@ async def change_password_by_admin(
     result = await admin_controller.change_password_by_admin(student_id)
     return {"message": result}
 
+@router.post("/change-email", status_code=status.HTTP_200_OK)
+async def change_email_by_admin(
+    student_id: str,
+    new_email: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.change_email_by_admin(student_id, new_email)
+    return {"message": "Email changed successfully"}
