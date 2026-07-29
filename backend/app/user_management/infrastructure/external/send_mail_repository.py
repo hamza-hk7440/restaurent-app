@@ -204,6 +204,25 @@ class SendMailForWlcAndPasswordService(ISendMailForWlcAndPasswordService):
         # Return token so it can be saved to database
         return verification_token
     
+    async def send_verification_email_for_change(self, receiver_mail: str, verification_token: str) -> str:
+            
+            # Create verification link using the configured frontend URL.
+            verification_link = f"http://127.0.0.1:8000/auth/verify-email-change?token={verification_token}"
+            
+            subject = f"Verify Your Email - {self.settings.FROM_NAME}"
+            
+            html_content = self._get_verification_email_template(
+                receiver_mail=receiver_mail,
+                verification_link=verification_link
+            )
+            
+            await self._send_email(
+                to_email=receiver_mail,
+                subject=subject,
+                html_content=html_content
+            )
+            return verification_token
+    
     def _get_verification_email_template(self, receiver_mail: str, verification_link: str) -> str:
       
         return f"""

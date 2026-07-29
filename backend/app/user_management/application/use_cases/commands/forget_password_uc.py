@@ -6,6 +6,7 @@ from user_management.domain.interfaces.events_repo import IEventRepository
 from user_management.application.services.send_mail_for_wlc_an_password_service import ISendMailForWlcAndPasswordService
 from user_management.application.exceptions.exception import UserNotFoundException,InvalidTokenException
 from user_management.application.services.password_service import IPasswordService
+from user_management.domain.value_objects.token_type import TokenType
 class ForgetPasswordUseCase:
     def __init__(
         self, 
@@ -29,8 +30,13 @@ class ForgetPasswordUseCase:
             raise UserNotFoundException("User with the provided email does not exist.")        
         reset_token = self.jwt_service.generate_password_reset_token()
         expires_at = await self.jwt_service.get_token_expiry_time()
-        await self.jwt_service.save_token(str(user.student_id), reset_token, expires_at)
-        reset_link=f"https://your-app.com/reset-password?token={reset_token}"
+        await self.jwt_service.save_token(
+            str(user.student_id),
+            reset_token,
+            expires_at,
+            token_type=TokenType.PASSWORD_RESET
+        )
+        reset_link=f"{self.send_mail_service.settings.FRONTEND_URL}/reset-password?token={reset_token}"
         await self.send_mail_service.send_password_reset_email(email, reset_link)
         return {"message": "Password reset email sent successfully."}
     async def reset_password(self, token: str, new_password: str) -> None:
@@ -42,7 +48,7 @@ class ForgetPasswordUseCase:
         if not student:
             raise UserNotFoundException("User with the provided email does not exist.")
         await self.user_repo.change_password(student_id,hashed)
-        event=PasswordChangedEvent(student_id=student_id)
+        event=PasswordChangedEvent(user_id=student_id)
         await self.event_repo.dispatch(event)
         await self.jwt_service.delete_token(token)
         return {"message": "Password reset successfully."}

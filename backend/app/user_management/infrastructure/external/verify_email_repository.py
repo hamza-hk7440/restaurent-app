@@ -38,3 +38,13 @@ class VerifyEmailRepository(IVerifyEmailService):
         await self.user_repo.mark_email_as_verified(student.student_id)
         await self.jwt_service.delete_token(token)
         return True
+    async def verify_email_for_change(self, token: str) -> bool:
+        student_id = await self.jwt_service.verify_verification_token(token)
+        if not student_id:
+            return False
+        student = await self.user_repo.get_student_by_id(student_id)
+        if not student:
+            return False
+        await self.user_repo.mark_email_as_verified(student.student_id)
+        await self.jwt_service.delete_token(token)
+        return True

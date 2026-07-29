@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Optional
 from user_management.domain.entities.student import Student
 from user_management.domain.entities.admin import Admin
 from user_management.domain.interfaces.base import IRepository
@@ -35,10 +36,10 @@ class IUserRepository(ABC):
     async def edit_last_name(self, student_id: str, last_name: str) -> None:
         pass
     @abstractmethod
-    async def edit_email(self, student_id: str, email: str) -> None:
+    async def edit_email(self, student_id: str, email: str) -> Optional[str]:
         pass
     @abstractmethod
-    async def change_password(self, student_id: str, password: str) -> None:
+    async def change_password(self, student_id: str, password: str) -> str:
         pass
     @abstractmethod
     async def get_student_info_by_name(self, first_name: str, last_name: str) -> list[Student]:

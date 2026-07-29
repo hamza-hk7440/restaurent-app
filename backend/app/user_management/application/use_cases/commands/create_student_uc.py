@@ -51,6 +51,7 @@ class CreateStudentUseCase:
         print("[debug][create_student][uc] checking if student exists")
         try:
             student_exists = await self.student_repo.exists(registration_number)
+            email_exists = await self.student_repo.get_student_by_email(email)
         except Exception as e:
             print(f"[debug][create_student][uc] exists check failed: {e}")
             raise RuntimeError(f"create_student failed at exists check: {e}") from e
@@ -58,6 +59,10 @@ class CreateStudentUseCase:
         if student_exists:
             print("[debug][create_student][uc] validation failed: student already exists")
             raise UserAlreadyExistsException(f"Student with registration number {registration_number} already exists.")
+
+        if email_exists:
+            print("[debug][create_student][uc] validation failed: email already exists")
+            raise UserAlreadyExistsException(f"Student with email {email} already exists.")
 
         print("[debug][create_student][uc] generating password")
         password = self.password_generator_service.generate_password()

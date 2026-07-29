@@ -19,10 +19,27 @@ class VerifyEmailController:
             print("[debug][verify_email][controller] success")
             # Redirect user to your frontend login or success page
             return RedirectResponse(url="http://localhost:3000/login?verified=true", status_code=303)
-            
         except HTTPException:
             raise
         except Exception as e:
             print("[debug][verify_email][controller] failed")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=400, detail=str(e))
+    async def verify_email_for_change(self, token: str):
+        try:
+            print(f"[debug][verify_email_for_change][controller] request token={token}")
+            success = await self.verify_email_service.verify_email_for_change(token)
+            
+            if not success:
+                print("[debug][verify_email_for_change][controller] validation failed: invalid or expired token")
+                raise HTTPException(status_code=400, detail="Invalid or expired verification token.")
+                
+            print("[debug][verify_email_for_change][controller] success")
+            # Redirect user to your frontend login or success page
+            return RedirectResponse(url="http://localhost:3000/login?email_changed=true", status_code=303)
+        except HTTPException:
+            raise
+        except Exception as e:
+            print("[debug][verify_email_for_change][controller] failed")
             print(traceback.format_exc())
             raise HTTPException(status_code=400, detail=str(e))

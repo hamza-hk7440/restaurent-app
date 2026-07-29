@@ -20,7 +20,9 @@ class PasswordChangedEvent(DomainEvent):
 class EmailChangedEvent(DomainEvent):
     user_id: UUID
     new_email: str
+    verification_token: str
     changed_at: datetime = datetime.now(timezone.utc)
+    
 @dataclass(frozen=True)
 class StudentInfoEditedEvent(DomainEvent):
     user_id: UUID
