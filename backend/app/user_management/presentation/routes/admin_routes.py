@@ -44,3 +44,13 @@ async def change_email_by_admin(
 ):
     await admin_controller.change_email_by_admin(student_id, new_email)
     return {"message": "Email changed successfully"}
+@router.post("/ban-student", status_code=status.HTTP_200_OK)
+async def ban_student(
+    student_id: str,
+    reason: str,
+    duration: int,
+    admin_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.ban_student(admin_id=admin_id, student_id=student_id, reason=reason, duration=duration)
+    return {"message": "Student banned successfully"}

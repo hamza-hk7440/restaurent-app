@@ -33,6 +33,7 @@ class StudentInfoEditedEvent(DomainEvent):
 class BannedStudentEvent(DomainEvent):
     user_id: UUID
     period_of_ban: str
+    reason: str
     banned_at: datetime = datetime.now(timezone.utc)
     
 @dataclass(frozen=True)

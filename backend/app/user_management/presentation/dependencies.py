@@ -6,11 +6,13 @@ from user_management.presentation.controllers.forget_password_controller import 
 from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
 from user_management.infrastructure.external.forget_password_repository import ForgetPasswordRepository
 from fastapi import Depends
+from user_management.application.use_cases.commands.ban_student_uc import BanStudentUseCase
 from user_management.presentation.controllers.student_controller import StudentController
 from supabase import AsyncClient
 from user_management.application.use_cases.commands.logout_uc import LogoutUseCase
 from user_management.presentation.controllers.logout_controller import LogoutController
 from sqlalchemy.ext.asyncio import AsyncSession
+from user_management.application.dtos.punishment_dto import PunishmentDTO
 from user_management.infrastructure.events.user_event_handler import EmailChangedEventHandler
 from user_management.presentation.controllers.verify_email_controller import VerifyEmailController
 from user_management.infrastructure.config.database import DatabaseConfig
@@ -66,7 +68,12 @@ def get_admin_controller(
         jwt_service=jwt_repo,
         email_changed_event_handler=email_event_handler
     )
-    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc)
+    ban_student_uc = BanStudentUseCase(
+        user_repo=user_repo,
+        events_repo=event_repo,
+        punishment_dto=PunishmentDTO
+    )
+    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc, ban_student_uc=ban_student_uc)
 def get_verify_email_controller(
         db_session: AsyncSession = Depends(get_db),
 ) -> VerifyEmailController:
