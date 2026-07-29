@@ -1,9 +1,14 @@
 from operator import and_
 from typing import List, Optional
 from unittest import result
+from datetime import datetime, timezone, timedelta
+from user_management.domain.value_objects.token_type import TokenType
+from user_management.infrastructure.external.jwt_repository import JWTRepository
 from user_management.infrastructure.database.models import student_model
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+from user_management.infrastructure.config.settings import get_settings
+from user_management.application.services.jwt_service import IJWTService
 from datetime import datetime, timezone
 from user_management.infrastructure.database.models.student_model import StudentModel
 from user_management.infrastructure.database.repositories.base_repository import BaseRepository
@@ -19,6 +24,8 @@ from uuid import UUID
 class UserRepository(IUserRepository):
     def __init__(self, db_session: AsyncSession):
         self.db = db_session
+        self.settings = get_settings()
+        self.jwt_service: IJWTService = JWTRepository(db_session)  # Initialize JWTRepository with the same session
 
     def _normalize_uuid(self, value):
         if isinstance(value, UUID):
@@ -146,7 +153,7 @@ class UserRepository(IUserRepository):
         
         if student:
             student.first_name = first_name
-            student.updated_at = datetime.utcnow()
+            student.updated_at = datetime.now(timezone.utc)
             await self.db.commit()
     
     async def edit_last_name(self, student_id: str, last_name: str) -> None:
@@ -165,29 +172,34 @@ class UserRepository(IUserRepository):
             student.updated_at = datetime.utcnow()
             await self.db.commit()
     
-    async def edit_email(self, student_id: str, email: str) -> None:
+    async def edit_email(self, student_id: str, email: str, verification_token: str) -> Optional[str]:
         try:
             student_uuid = self._normalize_uuid(student_id)
         except ValueError:
-            return
+            return None
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
-        
         if student:
             student.email = email.lower()
-            student.email_verified = False
-            student.email_verified_at = None
-            student.updated_at = datetime.utcnow()
+            await self.jwt_service.save_verification_token(student_id, verification_token, datetime.now(timezone.utc) + timedelta(hours=self.settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS), token_type=TokenType.VERIFICATION)
+            student.email_verified = False                  # Reset verification state
+            student.email_verified_at = None                 # Clear previous verification date
+            student.updated_at = datetime.now(timezone.utc)
+            
             await self.db.commit()
+            return student.email
+        
+        return None
     
-    async def change_password(self, student_id, new_password_hash: str) -> None:
+    async def change_password(self, student_id, new_password_hash: str) -> str:
         db_student = await self.db.get(StudentModel, self._normalize_uuid(student_id))
         if db_student:
             db_student.password_hash = new_password_hash
             await self.db.commit()
+        return new_password_hash
     
     async def edit_student_infos(
         self,
@@ -235,7 +247,7 @@ class UserRepository(IUserRepository):
         if email_verified_at is not None:
             student.email_verified_at = email_verified_at
         
-        student.updated_at = datetime.utcnow()
+        student.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
 
     async def get_student_by_id(self, student_id: str) -> Optional[Student]:

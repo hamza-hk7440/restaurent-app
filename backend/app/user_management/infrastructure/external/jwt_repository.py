@@ -16,7 +16,7 @@ class JWTRepository(IJWTService):
         self.db = db
 
     def generate_token(self, user_id: str) -> str:
-        expire = datetime.utcnow() + timedelta(minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode = {"sub": user_id, "exp": expire}
         token= jwt.encode(to_encode, self.settings.JWT_SECRET, algorithm=self.settings.JWT_ALGORITHM)
         return token
@@ -27,15 +27,26 @@ class JWTRepository(IJWTService):
             return payload.get("sub")
         except JWTError:
             return None
-    def generate_password_reset_token()-> str:
+    def generate_password_reset_token(self) -> str:
         return secrets.token_urlsafe(32)
-    def generate_verification_token()-> str:
+    def generate_verification_token(self) -> str:
         return secrets.token_urlsafe(32)
     def is_token_expired(self, expires_at: datetime) -> bool:
         return datetime.now(timezone.utc) > expires_at
     async def save_token(self, user_id: str, token: str, expires_at: datetime, token_type: TokenType = TokenType.REFRESH) -> None:
         if self.db is None:
             return
+        model = TokenModel(
+            user_id=UUID(str(user_id)),
+            token_type=token_type,
+            token_value=token,
+            expires_at=expires_at,
+        )
+        self.db.add(model)
+        await self.db.commit()
+    async def save_verification_token(self, user_id: str, token: str, expires_at: datetime, token_type: TokenType = TokenType.VERIFICATION) -> Optional[str]:
+        if self.db is None:
+            return None
         model = TokenModel(
             user_id=UUID(str(user_id)),
             token_type=token_type,
