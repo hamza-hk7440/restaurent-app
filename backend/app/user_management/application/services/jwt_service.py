@@ -38,3 +38,6 @@ class IJWTService(ABC):
     @abstractmethod
     async def save_verification_token(self, user_id: str, token: str, expires_at: datetime, token_type: TokenType = TokenType.VERIFICATION) -> Optional[str]:
         pass
+    @abstractmethod
+    async def verify_refresh_token(self, token: str) -> Optional[str]:
+        pass

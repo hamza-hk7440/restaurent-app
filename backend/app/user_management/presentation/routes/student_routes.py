@@ -29,3 +29,10 @@ async def change_email(
 ):
     result = await student_controller.change_email(student_id, current_password, new_email)
     return {"message": result}
+@student_router.get("/profile-info", status_code=status.HTTP_200_OK)
+async def display_profile_info(
+    student_id: str,
+    student_controller: StudentController = Depends(get_student_controller)
+):
+    result = await student_controller.display_profile_info(student_id)
+    return {"profile_info": result}

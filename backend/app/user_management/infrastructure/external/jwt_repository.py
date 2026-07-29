@@ -27,6 +27,8 @@ class JWTRepository(IJWTService):
             return payload.get("sub")
         except JWTError:
             return None
+    async def verify_refresh_token(self, token: str) -> Optional[str]:
+        return await self._verify_stored_token(token, TokenType.REFRESH)
     def generate_password_reset_token(self) -> str:
         return secrets.token_urlsafe(32)
     def generate_verification_token(self) -> str:

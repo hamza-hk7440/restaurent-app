@@ -1,3 +1,4 @@
+from user_management.application.use_cases.queries.display_profile_info_uc import DisplayProfileInfoUseCase
 from user_management.application.use_cases.commands.login_for_students_uc import LoginForStudentsUseCase
 from user_management.presentation.controllers.verify_email_controller import VerifyEmailController
 from user_management.presentation.controllers.forget_password_controller import ForgetPasswordController
@@ -6,6 +7,8 @@ from user_management.infrastructure.external.forget_password_repository import F
 from fastapi import Depends
 from user_management.presentation.controllers.student_controller import StudentController
 from supabase import AsyncClient
+from user_management.application.use_cases.commands.logout_uc import LogoutUseCase
+from user_management.presentation.controllers.logout_controller import LogoutController
 from sqlalchemy.ext.asyncio import AsyncSession
 from user_management.infrastructure.events.user_event_handler import EmailChangedEventHandler
 from user_management.presentation.controllers.verify_email_controller import VerifyEmailController
@@ -107,11 +110,25 @@ def get_student_controller(
         jwt_service=jwt_service,
         email_changed_event_handler=email_event_handler
     )
+    display_profile_info_uc = DisplayProfileInfoUseCase(
+        user_repo=student_repo
+    )
     return StudentController(
         login_for_students_uc=login_for_students_uc,
         change_password_by_student_uc=change_password_by_student_uc,
         change_email_by_student_uc=change_email_by_student_uc,
         verify_email_controller=verify_email_controller,
-        jwt_service=jwt_service
+        jwt_service=jwt_service,
+        display_profile_info_uc=display_profile_info_uc
         
     )
+def get_logout_controller(
+        db_session: AsyncSession = Depends(get_db),
+) -> LogoutController:
+    student_repo = UserRepository(db_session=db_session)
+    jwt_service = JWTRepository(db_session)
+    logout_uc = LogoutUseCase(
+        user_repo=student_repo,
+        jwt_service=jwt_service
+    )
+    return LogoutController(student_repo=student_repo, jwt_service=jwt_service)
