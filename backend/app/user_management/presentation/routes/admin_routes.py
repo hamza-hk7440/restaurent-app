@@ -28,4 +28,11 @@ async def login_for_admin(
 ):
     token = await admin_controller.login_for_admin(email, password)
     return {"token": token}
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password_by_admin(
+    student_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    result = await admin_controller.change_password_by_admin(student_id)
+    return {"message": result}
 

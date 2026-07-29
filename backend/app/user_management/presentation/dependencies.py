@@ -28,6 +28,7 @@ from user_management.infrastructure.external.jwt_repository import JWTRepository
 from user_management.infrastructure.external.send_mail_repository import SendMailForWlcAndPasswordService
 from user_management.infrastructure.external.password_generator_repository import PasswordGeneratorRepository
 from user_management.infrastructure.config.database import get_db
+from user_management.application.use_cases.commands.change_password_by_admin import ChangePasswordByAdminUseCase
 def get_admin_controller(
         db_session: AsyncSession = Depends(get_db),  
 ) -> AdminController:
@@ -50,7 +51,14 @@ def get_admin_controller(
         jwt_service=jwt_repo,
         password_service=password_repo
     )
-    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc)
+    change_password_by_admin_uc = ChangePasswordByAdminUseCase(
+        user_repo=user_repo,
+        password_service=password_repo,
+        events_repo=event_repo,
+        password_generator_service=password_generator_repo,
+        send_mail_service=send_mail_repo
+    )
+    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc)
 def get_verify_email_controller(
         db_session: AsyncSession = Depends(get_db),
 ) -> VerifyEmailController:

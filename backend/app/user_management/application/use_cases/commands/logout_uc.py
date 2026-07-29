@@ -1,5 +1,5 @@
 from user_management.domain.interfaces.user_repo import IUserRepository
-from user_management.application.exceptions.exception import UserNotFoundException,InvalidTokenException
+from user_management.application.exceptions.exception import InvalidTokenException
 from user_management.application.services.jwt_service import IJWTService
 
 class LogoutUseCase:

@@ -2,13 +2,14 @@ from fastapi import HTTPException
 import traceback
 
 from user_management.presentation.schemas.admin_schema import AdminSchema
-
+from user_management.application.use_cases.commands.change_password_by_admin import ChangePasswordByAdminUseCase
 from user_management.application.use_cases.commands.create_student_uc import CreateStudentUseCase
 from user_management.application.use_cases.commands.login_for_admin_uc import LoginForAdminUseCase
 class AdminController:
-    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase):
+    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase, change_password_by_admin_uc: ChangePasswordByAdminUseCase):
         self.create_student_uc = create_student_uc
         self.login_for_admin_uc = login_for_admin_uc
+        self.change_password_by_admin_uc = change_password_by_admin_uc
 
     async def create_student(self, first_name: str, last_name: str, email: str, registration_number: str, establishment: str) -> str:
         try:
@@ -30,4 +31,14 @@ class AdminController:
             print("[debug][login_for_admin][controller] failed")
             print(traceback.format_exc())
             raise HTTPException(status_code=400, detail=str(e))
-    
+    async def change_password_by_admin(self,student_id) -> str:
+        try:
+            print(f"[debug][change_password_by_admin][controller] request student_id={student_id}")
+            result = await self.change_password_by_admin_uc.change_password_by_admin(student_id)
+            print("[debug][change_password_by_admin][controller] success")
+            return result
+        except Exception as e:
+            print("[debug][change_password_by_admin][controller] failed")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=400, detail=str(e))
+        
