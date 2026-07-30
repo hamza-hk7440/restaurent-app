@@ -328,7 +328,7 @@ class UserRepository(IUserRepository):
             return None
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
         

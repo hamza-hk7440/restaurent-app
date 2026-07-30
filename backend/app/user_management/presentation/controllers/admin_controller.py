@@ -8,14 +8,18 @@ from user_management.application.use_cases.commands.login_for_admin_uc import Lo
 from user_management.application.use_cases.commands.change_email_by_admin_uc import ChangeEmailByAdminUseCase
 from user_management.application.use_cases.commands.ban_student_uc import BanStudentUseCase
 from user_management.application.use_cases.commands.unban_student_uc import UnbanStudentUseCase
+from user_management.application.use_cases.commands.activate_student_uc import ActivateStudentUseCase
+from user_management.application.use_cases.commands.desactivate_student_uc import DesactivateStudentUseCase
 class AdminController:
-    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase, change_password_by_admin_uc: ChangePasswordByAdminUseCase, change_email_by_admin_uc: ChangeEmailByAdminUseCase, ban_student_uc: BanStudentUseCase, unban_student_uc: UnbanStudentUseCase):
+    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase, change_password_by_admin_uc: ChangePasswordByAdminUseCase, change_email_by_admin_uc: ChangeEmailByAdminUseCase, ban_student_uc: BanStudentUseCase, unban_student_uc: UnbanStudentUseCase, activate_student_uc: ActivateStudentUseCase, desactivate_student_uc: DesactivateStudentUseCase):
         self.create_student_uc = create_student_uc
         self.login_for_admin_uc = login_for_admin_uc
         self.change_password_by_admin_uc = change_password_by_admin_uc
         self.change_email_by_admin_uc = change_email_by_admin_uc
         self.ban_student_uc = ban_student_uc
         self.unban_student_uc = unban_student_uc
+        self.activate_student_uc = activate_student_uc
+        self.desactivate_student_uc = desactivate_student_uc
 
     async def create_student(self, first_name: str, last_name: str, email: str, registration_number: str, establishment: str) -> str:
         try:
@@ -74,4 +78,23 @@ class AdminController:
             print("[debug][unban_student][controller] failed")
             print(traceback.format_exc())
             raise HTTPException(status_code=400, detail=str(e))
+    async def activate_student(self, student_id: str) -> None:
+        try:
+            print(f"[debug][activate_student][controller] request student_id={student_id}")
+            await self.activate_student_uc.activate_student(student_id=student_id)
+            print("[debug][activate_student][controller] success")
+        except Exception as e:
+            print("[debug][activate_student][controller] failed")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=400, detail=str(e))
+    async def desactivate_student(self, student_id: str) -> None:
+        try:
+            print(f"[debug][desactivate_student][controller] request student_id={student_id}")
+            await self.desactivate_student_uc.desactivate_student(student_id=student_id)
+            print("[debug][desactivate_student][controller] success")
+        except Exception as e:
+            print("[debug][desactivate_student][controller] failed")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=400, detail=str(e))
+        
         

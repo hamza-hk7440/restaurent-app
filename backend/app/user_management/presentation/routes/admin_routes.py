@@ -61,3 +61,17 @@ async def unban_student(
 ):
     await admin_controller.unban_student(student_id=student_id)
     return {"message": "Student unbanned successfully"}
+@router.post("/activate-student", status_code=status.HTTP_200_OK)
+async def activate_student(
+    student_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.activate_student(student_id=student_id)
+    return {"message": "Student activated successfully"}
+@router.post("/desactivate-student", status_code=status.HTTP_200_OK)
+async def desactivate_student(
+    student_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.desactivate_student(student_id=student_id)
+    return {"message": "Student desactivated successfully"}
