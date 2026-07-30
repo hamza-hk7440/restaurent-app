@@ -455,6 +455,8 @@ class UserRepository(IUserRepository):
         
         return Punishment(
             punishment_id=model.punishment_id,
+            admin_id=model.admin_id,
+            period_of_ban=model.period_of_ban,
             student_id=model.student_id,
             reason=model.reason,
             created_at=model.created_at

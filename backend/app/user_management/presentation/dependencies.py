@@ -6,6 +6,7 @@ from user_management.presentation.controllers.forget_password_controller import 
 from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
 from user_management.infrastructure.external.forget_password_repository import ForgetPasswordRepository
 from fastapi import Depends
+from user_management.application.use_cases.queries.get_punishments_by_students_id_uc import GetPunishmentsByStudentIdUseCase
 from user_management.application.use_cases.commands.edit_student_infos_uc import EditStudentInfosUseCase
 from user_management.application.use_cases.commands.unban_student_uc import UnbanStudentUseCase
 from user_management.application.use_cases.commands.activate_student_uc import ActivateStudentUseCase
@@ -175,3 +176,8 @@ def get_logout_controller(
         jwt_service=jwt_service
     )
     return LogoutController(student_repo=student_repo, jwt_service=jwt_service)
+def get_get_punishments_by_student_id_controller(
+        db_session: AsyncSession = Depends(get_db),
+) -> GetPunishmentsByStudentIdUseCase:
+    student_repo = UserRepository(db_session=db_session)
+    return GetPunishmentsByStudentIdUseCase(user_repo=student_repo)

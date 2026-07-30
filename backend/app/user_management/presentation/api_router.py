@@ -3,7 +3,9 @@ from user_management.presentation.routes.admin_routes import router as admin_rou
 from user_management.presentation.routes.verification_routes import router as verification_router
 from user_management.presentation.routes.student_routes import student_router 
 from user_management.presentation.routes.logout_routes import logout_router
+from user_management.presentation.routes.get_punishment_routes import get_punishment_router
 api_router = APIRouter()
+api_router.include_router(get_punishment_router)
 api_router.include_router(admin_router)
 api_router.include_router(verification_router)
 api_router.include_router(student_router)
