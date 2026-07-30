@@ -6,6 +6,18 @@ from user_management.presentation.controllers.forget_password_controller import 
 from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
 from user_management.infrastructure.external.forget_password_repository import ForgetPasswordRepository
 from fastapi import Depends
+from user_management.presentation.controllers.search_controller import SearchController
+from user_management.application.use_cases.queries.get_student_by_email_uc import GetStudentByEmailUseCase
+from user_management.application.use_cases.queries.get_student_info_by_name_uc import GetStudentInfoByNameUseCase
+from user_management.application.use_cases.queries.get_student_info_by_registration_number_uc import GetStudentInfoByRegistrationNumberUseCase
+from user_management.application.use_cases.queries.get_students_by_establishment_uc import GetStudentsByEstablishmentUseCase
+from user_management.application.use_cases.queries.get_all_students_uc import GetAllStudentsUseCase
+from user_management.application.use_cases.queries.get_all_admins_uc import GetAllAdminsUseCase
+from user_management.application.use_cases.queries.get_punishments_by_students_id_uc import GetPunishmentsByStudentIdUseCase
+from user_management.application.use_cases.commands.edit_student_infos_uc import EditStudentInfosUseCase
+from user_management.application.use_cases.commands.unban_student_uc import UnbanStudentUseCase
+from user_management.application.use_cases.commands.activate_student_uc import ActivateStudentUseCase
+from user_management.application.use_cases.commands.desactivate_student_uc import DesactivateStudentUseCase
 from user_management.application.use_cases.commands.ban_student_uc import BanStudentUseCase
 from user_management.presentation.controllers.student_controller import StudentController
 from supabase import AsyncClient
@@ -73,7 +85,26 @@ def get_admin_controller(
         events_repo=event_repo,
         punishment_dto=PunishmentDTO
     )
-    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc, ban_student_uc=ban_student_uc)
+    unban_student_uc = UnbanStudentUseCase(
+        user_repo=user_repo,
+        events_repo=event_repo
+    )
+    activate_student_uc = ActivateStudentUseCase(
+        user_repo=user_repo,
+        events_repo=event_repo
+    )
+    desactivate_student_uc = DesactivateStudentUseCase(
+        user_repo=user_repo,
+        events_repo=event_repo
+    )
+    edit_student_infos_uc = EditStudentInfosUseCase(
+        user_repo=user_repo,
+        events_repo=event_repo
+    )
+    get_all_admins_uc = GetAllAdminsUseCase(
+        user_repo=user_repo
+    )
+    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc, ban_student_uc=ban_student_uc, unban_student_uc=unban_student_uc, activate_student_uc=activate_student_uc, desactivate_student_uc=desactivate_student_uc, edit_student_infos_uc=edit_student_infos_uc, get_all_admins_uc=get_all_admins_uc)
 def get_verify_email_controller(
         db_session: AsyncSession = Depends(get_db),
 ) -> VerifyEmailController:
@@ -136,13 +167,17 @@ def get_student_controller(
     display_profile_info_uc = DisplayProfileInfoUseCase(
         user_repo=student_repo
     )
+    get_all_students_uc = GetAllStudentsUseCase(
+        user_repo=student_repo
+    )
     return StudentController(
         login_for_students_uc=login_for_students_uc,
         change_password_by_student_uc=change_password_by_student_uc,
         change_email_by_student_uc=change_email_by_student_uc,
         verify_email_controller=verify_email_controller,
         jwt_service=jwt_service,
-        display_profile_info_uc=display_profile_info_uc
+        display_profile_info_uc=display_profile_info_uc,
+        get_all_students_uc=get_all_students_uc
         
     )
 def get_logout_controller(
@@ -155,3 +190,22 @@ def get_logout_controller(
         jwt_service=jwt_service
     )
     return LogoutController(student_repo=student_repo, jwt_service=jwt_service)
+def get_get_punishments_by_student_id_controller(
+        db_session: AsyncSession = Depends(get_db),
+) -> GetPunishmentsByStudentIdUseCase:
+    student_repo = UserRepository(db_session=db_session)
+    return GetPunishmentsByStudentIdUseCase(user_repo=student_repo)
+def get_search_controller(
+        db_session: AsyncSession = Depends(get_db),
+) -> SearchController:
+    student_repo = UserRepository(db_session=db_session)
+    get_student_by_email_uc = GetStudentByEmailUseCase(user_repo=student_repo)
+    get_student_info_by_name_uc = GetStudentInfoByNameUseCase(user_repo=student_repo)
+    get_student_info_by_registration_number_uc = GetStudentInfoByRegistrationNumberUseCase(user_repo=student_repo)
+    get_students_by_establishment_uc = GetStudentsByEstablishmentUseCase(user_repo=student_repo)
+    return SearchController(
+        get_student_by_email_uc=get_student_by_email_uc,
+        get_student_info_by_name_uc=get_student_info_by_name_uc,
+        get_student_info_by_registration_number_uc=get_student_info_by_registration_number_uc,
+        get_students_by_establishment_uc=get_students_by_establishment_uc
+    )

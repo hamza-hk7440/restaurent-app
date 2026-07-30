@@ -147,7 +147,7 @@ class UserRepository(IUserRepository):
             return
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
         
@@ -163,7 +163,7 @@ class UserRepository(IUserRepository):
             return
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
         
@@ -302,7 +302,7 @@ class UserRepository(IUserRepository):
     
     async def get_all_students(self) -> List[Student]:
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.is_active == True)
+            select(StudentModel).filter(StudentModel.status == StudentStatus.ACTIVE)
         )
         models = result.scalars().all()
         
@@ -328,7 +328,7 @@ class UserRepository(IUserRepository):
             return None
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
         
@@ -384,7 +384,7 @@ class UserRepository(IUserRepository):
         await self.db.commit()
         return {f"Student {student_id} has been banned for {period_of_ban} days."}
     
-    async def unban_student(self, student_id: str) -> None:
+    async def unban_student(self, student_id: str) -> str:
         try:
             student_uuid = self._normalize_uuid(student_id)
         except ValueError:
@@ -400,6 +400,7 @@ class UserRepository(IUserRepository):
             student.is_active = True
             student.updated_at = datetime.utcnow()
             await self.db.commit()
+        return f"Student {student_id} has been unbanned."
     
     async def get_all_admins(self) -> List[Admin]:
         result = await self.db.execute(select(AdminModel))
@@ -454,6 +455,8 @@ class UserRepository(IUserRepository):
         
         return Punishment(
             punishment_id=model.punishment_id,
+            admin_id=model.admin_id,
+            period_of_ban=model.period_of_ban,
             student_id=model.student_id,
             reason=model.reason,
             created_at=model.created_at
@@ -471,3 +474,33 @@ class UserRepository(IUserRepository):
         model = result.scalars().first()
         
         return self._map_admin_to_entity(model) if model else None
+    async def edit_registration_number(self, student_id: str, registration_number: str) -> None:
+        try:
+            student_uuid = self._normalize_uuid(student_id)
+        except ValueError:
+            return
+        
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
+        )
+        student = result.scalars().first()
+        
+        if student:
+            student.registration_number = registration_number
+            student.updated_at = datetime.now(timezone.utc)
+            await self.db.commit()
+    async def edit_establishment(self, student_id: str, establishment: str) -> None:
+        try:
+            student_uuid = self._normalize_uuid(student_id)
+        except ValueError:
+            return
+        
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
+        )
+        student = result.scalars().first()
+        
+        if student:
+            student.establishment = establishment
+            student.updated_at = datetime.now(timezone.utc)
+            await self.db.commit()

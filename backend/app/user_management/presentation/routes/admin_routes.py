@@ -54,3 +54,41 @@ async def ban_student(
 ):
     await admin_controller.ban_student(admin_id=admin_id, student_id=student_id, reason=reason, duration=duration)
     return {"message": "Student banned successfully"}
+@router.post("/unban-student", status_code=status.HTTP_200_OK)
+async def unban_student(
+    student_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.unban_student(student_id=student_id)
+    return {"message": "Student unbanned successfully"}
+@router.post("/activate-student", status_code=status.HTTP_200_OK)
+async def activate_student(
+    student_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.activate_student(student_id=student_id)
+    return {"message": "Student activated successfully"}
+@router.post("/desactivate-student", status_code=status.HTTP_200_OK)
+async def desactivate_student(
+    student_id: str,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.desactivate_student(student_id=student_id)
+    return {"message": "Student desactivated successfully"}
+@router.post("/edit-student-infos", status_code=status.HTTP_200_OK)
+async def edit_student_infos(
+    student_id: str,
+    new_first_name: str = None,
+    new_last_name: str = None,
+    registration_number: str = None,
+    establishment: str = None,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.edit_student_infos(student_id=student_id, new_first_name=new_first_name, new_last_name=new_last_name, registration_number=registration_number, establishment=establishment)
+    return {"message": "Student infos edited successfully"}
+@router.get("/get-all-admins", status_code=status.HTTP_200_OK, response_model=List[AdminSchema])
+async def get_all_admins(
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    admins = await admin_controller.get_all_admins()
+    return admins

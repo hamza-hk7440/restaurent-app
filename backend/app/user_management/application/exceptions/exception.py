@@ -64,3 +64,7 @@ class  InvalidImageError(UserManagementException):
     """Exception raised when an image is invalid."""
     def __init__(self, message: str = "Invalid image", error_code: str = "INVALID_IMAGE"):
         super().__init__(message, error_code)
+class UnbanStudentFailedException(UserManagementException):
+    """Exception raised when unbanning a student fails."""
+    def __init__(self, message: str = "Unban student failed", error_code: str = "UNBAN_STUDENT_FAILED"):
+        super().__init__(message, error_code)

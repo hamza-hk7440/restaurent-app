@@ -75,7 +75,7 @@ class IUserRepository(ABC):
     async def ban_student(self, punishment: Punishment) -> str:
         pass
     @abstractmethod
-    async def unban_student(self, student_id: str) -> None:
+    async def unban_student(self, student_id: str) -> str:
         pass
     @abstractmethod
     async def edit_student_infos(self, student_id: str, first_name: str = None, last_name: str = None, email: str = None, establishment: str = None, email_verified: bool = None, email_verified_at: datetime = None,status: StudentStatus=None) -> None:
@@ -94,4 +94,10 @@ class IUserRepository(ABC):
         pass
     @abstractmethod
     async def get_admin_by_email(self, email: str) -> Admin:
+        pass
+    @abstractmethod
+    async def edit_registration_number(self, student_id: str, registration_number: str) -> None:
+        pass
+    @abstractmethod
+    async def edit_establishment(self, student_id: str, establishment: str) -> None:
         pass
