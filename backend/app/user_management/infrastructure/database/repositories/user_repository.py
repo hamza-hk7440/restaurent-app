@@ -384,7 +384,7 @@ class UserRepository(IUserRepository):
         await self.db.commit()
         return {f"Student {student_id} has been banned for {period_of_ban} days."}
     
-    async def unban_student(self, student_id: str) -> None:
+    async def unban_student(self, student_id: str) -> str:
         try:
             student_uuid = self._normalize_uuid(student_id)
         except ValueError:
@@ -400,6 +400,7 @@ class UserRepository(IUserRepository):
             student.is_active = True
             student.updated_at = datetime.utcnow()
             await self.db.commit()
+        return f"Student {student_id} has been unbanned."
     
     async def get_all_admins(self) -> List[Admin]:
         result = await self.db.execute(select(AdminModel))

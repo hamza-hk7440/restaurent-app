@@ -75,7 +75,7 @@ class IUserRepository(ABC):
     async def ban_student(self, punishment: Punishment) -> str:
         pass
     @abstractmethod
-    async def unban_student(self, student_id: str) -> None:
+    async def unban_student(self, student_id: str) -> str:
         pass
     @abstractmethod
     async def edit_student_infos(self, student_id: str, first_name: str = None, last_name: str = None, email: str = None, establishment: str = None, email_verified: bool = None, email_verified_at: datetime = None,status: StudentStatus=None) -> None:
