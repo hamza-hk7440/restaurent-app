@@ -95,3 +95,9 @@ class IUserRepository(ABC):
     @abstractmethod
     async def get_admin_by_email(self, email: str) -> Admin:
         pass
+    @abstractmethod
+    async def edit_registration_number(self, student_id: str, registration_number: str) -> None:
+        pass
+    @abstractmethod
+    async def edit_establishment(self, student_id: str, establishment: str) -> None:
+        pass

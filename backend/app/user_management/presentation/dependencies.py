@@ -6,6 +6,7 @@ from user_management.presentation.controllers.forget_password_controller import 
 from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
 from user_management.infrastructure.external.forget_password_repository import ForgetPasswordRepository
 from fastapi import Depends
+from user_management.application.use_cases.commands.edit_student_infos_uc import EditStudentInfosUseCase
 from user_management.application.use_cases.commands.unban_student_uc import UnbanStudentUseCase
 from user_management.application.use_cases.commands.activate_student_uc import ActivateStudentUseCase
 from user_management.application.use_cases.commands.desactivate_student_uc import DesactivateStudentUseCase
@@ -88,7 +89,11 @@ def get_admin_controller(
         user_repo=user_repo,
         events_repo=event_repo
     )
-    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc, ban_student_uc=ban_student_uc, unban_student_uc=unban_student_uc, activate_student_uc=activate_student_uc, desactivate_student_uc=desactivate_student_uc)
+    edit_student_infos_uc = EditStudentInfosUseCase(
+        user_repo=user_repo,
+        events_repo=event_repo
+    )
+    return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc, ban_student_uc=ban_student_uc, unban_student_uc=unban_student_uc, activate_student_uc=activate_student_uc, desactivate_student_uc=desactivate_student_uc, edit_student_infos_uc=edit_student_infos_uc)
 def get_verify_email_controller(
         db_session: AsyncSession = Depends(get_db),
 ) -> VerifyEmailController:

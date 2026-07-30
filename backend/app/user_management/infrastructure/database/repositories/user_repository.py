@@ -147,7 +147,7 @@ class UserRepository(IUserRepository):
             return
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
         
@@ -163,7 +163,7 @@ class UserRepository(IUserRepository):
             return
         
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.id == student_uuid)
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
         )
         student = result.scalars().first()
         
@@ -472,3 +472,33 @@ class UserRepository(IUserRepository):
         model = result.scalars().first()
         
         return self._map_admin_to_entity(model) if model else None
+    async def edit_registration_number(self, student_id: str, registration_number: str) -> None:
+        try:
+            student_uuid = self._normalize_uuid(student_id)
+        except ValueError:
+            return
+        
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
+        )
+        student = result.scalars().first()
+        
+        if student:
+            student.registration_number = registration_number
+            student.updated_at = datetime.now(timezone.utc)
+            await self.db.commit()
+    async def edit_establishment(self, student_id: str, establishment: str) -> None:
+        try:
+            student_uuid = self._normalize_uuid(student_id)
+        except ValueError:
+            return
+        
+        result = await self.db.execute(
+            select(StudentModel).filter(StudentModel.student_id == student_uuid)
+        )
+        student = result.scalars().first()
+        
+        if student:
+            student.establishment = establishment
+            student.updated_at = datetime.now(timezone.utc)
+            await self.db.commit()
