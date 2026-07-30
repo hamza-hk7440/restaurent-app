@@ -504,3 +504,30 @@ class UserRepository(IUserRepository):
             student.establishment = establishment
             student.updated_at = datetime.now(timezone.utc)
             await self.db.commit()
+    async def edit_punishment_period(self, punishment_id: str, new_period: int) -> str:
+        try:
+            punishment_uuid = self._normalize_uuid(punishment_id)
+        except ValueError:
+            return
+        
+        result = await self.db.execute(
+            select(PunishmentModel).filter(PunishmentModel.punishment_id == punishment_uuid)
+        )
+        punishment = result.scalars().first()
+        
+        if punishment:
+            punishment.period_of_ban = new_period
+            await self.db.commit()
+        return f"Punishment {punishment_id} period updated to {new_period} minutes."
+    async def get_punishment_by_id(self, punishment_id: str) -> Optional[Punishment]:
+        try:
+            punishment_uuid = self._normalize_uuid(punishment_id)
+        except ValueError:
+            return None
+        
+        result = await self.db.execute(
+            select(PunishmentModel).filter(PunishmentModel.punishment_id == punishment_uuid)
+        )
+        model = result.scalars().first()
+        
+        return self._map_punishment_to_entity(model) if model else None

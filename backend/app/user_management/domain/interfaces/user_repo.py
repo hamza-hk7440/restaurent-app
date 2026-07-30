@@ -101,3 +101,9 @@ class IUserRepository(ABC):
     @abstractmethod
     async def edit_establishment(self, student_id: str, establishment: str) -> None:
         pass
+    @abstractmethod
+    async def edit_punishment_period(self, punishment_id: str, new_period: int) -> str:
+        pass
+    @abstractmethod
+    async def get_punishment_by_id(self, punishment_id: str) -> Punishment:
+        pass

@@ -68,3 +68,11 @@ class UnbanStudentFailedException(UserManagementException):
     """Exception raised when unbanning a student fails."""
     def __init__(self, message: str = "Unban student failed", error_code: str = "UNBAN_STUDENT_FAILED"):
         super().__init__(message, error_code)
+class PunishmentEditFailedException(UserManagementException):
+    """Exception raised when editing a punishment fails."""
+    def __init__(self, message: str = "Edit punishment failed", error_code: str = "EDIT_PUNISHMENT_FAILED"):
+        super().__init__(message, error_code)
+class PunishmentNotFoundException(UserManagementException):
+    """Exception raised when a punishment is not found."""
+    def __init__(self, message: str = "Punishment not found", error_code: str = "PUNISHMENT_NOT_FOUND"):
+        super().__init__(message, error_code)

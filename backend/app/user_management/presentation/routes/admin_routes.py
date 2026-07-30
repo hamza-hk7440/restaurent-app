@@ -92,3 +92,12 @@ async def get_all_admins(
 ):
     admins = await admin_controller.get_all_admins()
     return admins
+
+@router.post("/edit-punishment-period", status_code=status.HTTP_200_OK)
+async def edit_punishment_period(
+    punishment_id: str,
+    new_duration: int,
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    await admin_controller.edit_punishment_period(punishment_id=punishment_id, new_duration=new_duration)
+    return {"message": "Punishment period edited successfully"}
