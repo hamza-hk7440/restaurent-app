@@ -5,8 +5,8 @@ class GetStudentInfoByNameUseCase:
     def __init__(self, user_repo: IUserRepository):
         self.user_repo = user_repo
 
-    async def get_student_info_by_name(self, name: str) -> dict:
-        student_info = await self.user_repo.get_student_info_by_name(name)
+    async def get_student_info_by_name(self, first_name: str, last_name: str) -> dict:
+        student_info = await self.user_repo.get_student_info_by_name(first_name, last_name)
         if student_info is None:
             raise DataFetchFailedException("Failed to fetch student info.")
         return student_info

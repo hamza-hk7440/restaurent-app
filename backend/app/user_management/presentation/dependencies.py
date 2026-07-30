@@ -6,6 +6,11 @@ from user_management.presentation.controllers.forget_password_controller import 
 from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
 from user_management.infrastructure.external.forget_password_repository import ForgetPasswordRepository
 from fastapi import Depends
+from user_management.presentation.controllers.search_controller import SearchController
+from user_management.application.use_cases.queries.get_student_by_email_uc import GetStudentByEmailUseCase
+from user_management.application.use_cases.queries.get_student_info_by_name_uc import GetStudentInfoByNameUseCase
+from user_management.application.use_cases.queries.get_student_info_by_registration_number_uc import GetStudentInfoByRegistrationNumberUseCase
+from user_management.application.use_cases.queries.get_students_by_establishment_uc import GetStudentsByEstablishmentUseCase
 from user_management.application.use_cases.queries.get_all_students_uc import GetAllStudentsUseCase
 from user_management.application.use_cases.queries.get_all_admins_uc import GetAllAdminsUseCase
 from user_management.application.use_cases.queries.get_punishments_by_students_id_uc import GetPunishmentsByStudentIdUseCase
@@ -190,3 +195,17 @@ def get_get_punishments_by_student_id_controller(
 ) -> GetPunishmentsByStudentIdUseCase:
     student_repo = UserRepository(db_session=db_session)
     return GetPunishmentsByStudentIdUseCase(user_repo=student_repo)
+def get_search_controller(
+        db_session: AsyncSession = Depends(get_db),
+) -> SearchController:
+    student_repo = UserRepository(db_session=db_session)
+    get_student_by_email_uc = GetStudentByEmailUseCase(user_repo=student_repo)
+    get_student_info_by_name_uc = GetStudentInfoByNameUseCase(user_repo=student_repo)
+    get_student_info_by_registration_number_uc = GetStudentInfoByRegistrationNumberUseCase(user_repo=student_repo)
+    get_students_by_establishment_uc = GetStudentsByEstablishmentUseCase(user_repo=student_repo)
+    return SearchController(
+        get_student_by_email_uc=get_student_by_email_uc,
+        get_student_info_by_name_uc=get_student_info_by_name_uc,
+        get_student_info_by_registration_number_uc=get_student_info_by_registration_number_uc,
+        get_students_by_establishment_uc=get_students_by_establishment_uc
+    )
