@@ -302,7 +302,7 @@ class UserRepository(IUserRepository):
     
     async def get_all_students(self) -> List[Student]:
         result = await self.db.execute(
-            select(StudentModel).filter(StudentModel.is_active == True)
+            select(StudentModel).filter(StudentModel.status == StudentStatus.ACTIVE)
         )
         models = result.scalars().all()
         

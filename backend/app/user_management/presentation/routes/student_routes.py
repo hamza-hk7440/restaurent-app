@@ -36,3 +36,9 @@ async def display_profile_info(
 ):
     result = await student_controller.display_profile_info(student_id)
     return {"profile_info": result}
+@student_router.get("/all-students", status_code=status.HTTP_200_OK)
+async def get_all_students(
+    student_controller: StudentController = Depends(get_student_controller)
+):
+    result = await student_controller.get_all_students()
+    return {"students": result}

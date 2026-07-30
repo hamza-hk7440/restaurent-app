@@ -10,9 +10,10 @@ from user_management.application.use_cases.commands.ban_student_uc import BanStu
 from user_management.application.use_cases.commands.unban_student_uc import UnbanStudentUseCase
 from user_management.application.use_cases.commands.activate_student_uc import ActivateStudentUseCase
 from user_management.application.use_cases.commands.desactivate_student_uc import DesactivateStudentUseCase
+from user_management.application.use_cases.queries.get_all_admins_uc import GetAllAdminsUseCase
 from user_management.application.use_cases.commands.edit_student_infos_uc import EditStudentInfosUseCase
 class AdminController:
-    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase, change_password_by_admin_uc: ChangePasswordByAdminUseCase, change_email_by_admin_uc: ChangeEmailByAdminUseCase, ban_student_uc: BanStudentUseCase, unban_student_uc: UnbanStudentUseCase, activate_student_uc: ActivateStudentUseCase, desactivate_student_uc: DesactivateStudentUseCase, edit_student_infos_uc: EditStudentInfosUseCase):
+    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase, change_password_by_admin_uc: ChangePasswordByAdminUseCase, change_email_by_admin_uc: ChangeEmailByAdminUseCase, ban_student_uc: BanStudentUseCase, unban_student_uc: UnbanStudentUseCase, activate_student_uc: ActivateStudentUseCase, desactivate_student_uc: DesactivateStudentUseCase, edit_student_infos_uc: EditStudentInfosUseCase, get_all_admins_uc: GetAllAdminsUseCase):
         self.create_student_uc = create_student_uc
         self.login_for_admin_uc = login_for_admin_uc
         self.change_password_by_admin_uc = change_password_by_admin_uc
@@ -22,6 +23,7 @@ class AdminController:
         self.activate_student_uc = activate_student_uc
         self.desactivate_student_uc = desactivate_student_uc
         self.edit_student_infos_uc = edit_student_infos_uc
+        self.get_all_admins_uc = get_all_admins_uc
 
     async def create_student(self, first_name: str, last_name: str, email: str, registration_number: str, establishment: str) -> str:
         try:
@@ -105,6 +107,16 @@ class AdminController:
             print("[debug][edit_student_infos][controller] success")
         except Exception as e:
             print("[debug][edit_student_infos][controller] failed")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=400, detail=str(e))
+    async def get_all_admins(self) -> list[AdminSchema]:
+        try:
+            print(f"[debug][get_all_admins][controller] request")
+            admins = await self.get_all_admins_uc.get_all_admins()
+            print("[debug][get_all_admins][controller] success")
+            return [AdminSchema.from_orm(admin) for admin in admins]
+        except Exception as e:
+            print("[debug][get_all_admins][controller] failed")
             print(traceback.format_exc())
             raise HTTPException(status_code=400, detail=str(e))
         

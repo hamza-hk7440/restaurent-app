@@ -86,3 +86,9 @@ async def edit_student_infos(
 ):
     await admin_controller.edit_student_infos(student_id=student_id, new_first_name=new_first_name, new_last_name=new_last_name, registration_number=registration_number, establishment=establishment)
     return {"message": "Student infos edited successfully"}
+@router.get("/get-all-admins", status_code=status.HTTP_200_OK, response_model=List[AdminSchema])
+async def get_all_admins(
+    admin_controller: AdminController = Depends(get_admin_controller)
+):
+    admins = await admin_controller.get_all_admins()
+    return admins

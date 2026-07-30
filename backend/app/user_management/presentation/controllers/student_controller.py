@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 import traceback
+from user_management.application.use_cases.queries.get_all_students_uc import GetAllStudentsUseCase
 from user_management.application.use_cases.commands.change_email_by_student_uc import ChangeEmailByStudentUseCase
 from user_management.application.use_cases.commands.login_for_students_uc import LoginForStudentsUseCase
 from user_management.application.use_cases.commands.change_password_by_student_uc import ChangePasswordByStudentUseCase
@@ -7,13 +8,14 @@ from user_management.presentation.controllers.verify_email_controller import Ver
 from user_management.application.services.jwt_service import IJWTService
 from user_management.application.use_cases.queries.display_profile_info_uc import DisplayProfileInfoUseCase
 class StudentController:
-    def __init__(self, login_for_students_uc: LoginForStudentsUseCase, change_password_by_student_uc: ChangePasswordByStudentUseCase, change_email_by_student_uc: ChangeEmailByStudentUseCase, verify_email_controller: VerifyEmailController,jwt_service: IJWTService, display_profile_info_uc: DisplayProfileInfoUseCase):
+    def __init__(self, login_for_students_uc: LoginForStudentsUseCase, change_password_by_student_uc: ChangePasswordByStudentUseCase, change_email_by_student_uc: ChangeEmailByStudentUseCase, verify_email_controller: VerifyEmailController,jwt_service: IJWTService, display_profile_info_uc: DisplayProfileInfoUseCase, get_all_students_uc: GetAllStudentsUseCase):
         self.verify_email_controller = verify_email_controller
         self.login_for_students_uc = login_for_students_uc
         self.change_password_by_student_uc = change_password_by_student_uc
         self.change_email_by_student_uc = change_email_by_student_uc
         self.jwt_service = jwt_service
         self.display_profile_info_uc = display_profile_info_uc
+        self.get_all_students_uc = get_all_students_uc
     async def normal_login(self, email: str, password: str) -> str:
         try:
             print(
@@ -79,3 +81,14 @@ class StudentController:
             print("[debug][display_profile_info][controller] failed")
             print(traceback.format_exc())
             raise HTTPException(status_code=400, detail=str(e))
+    async def get_all_students(self):
+        try:
+            print("[debug][get_all_students][controller] request")
+            students = await self.get_all_students_uc.get_all_students()
+            print("[debug][get_all_students][controller] success")
+            return students
+        except Exception as e:
+            print("[debug][get_all_students][controller] failed")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=400, detail=str(e))
+        
