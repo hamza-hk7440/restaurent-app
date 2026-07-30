@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 import traceback
-
+from user_management.application.use_cases.commands.edit_punishment_period_uc import EditPunishmentPeriodUseCase
 from user_management.presentation.schemas.admin_schema import AdminSchema
 from user_management.application.use_cases.commands.change_password_by_admin import ChangePasswordByAdminUseCase
 from user_management.application.use_cases.commands.create_student_uc import CreateStudentUseCase
@@ -13,7 +13,7 @@ from user_management.application.use_cases.commands.desactivate_student_uc impor
 from user_management.application.use_cases.queries.get_all_admins_uc import GetAllAdminsUseCase
 from user_management.application.use_cases.commands.edit_student_infos_uc import EditStudentInfosUseCase
 class AdminController:
-    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase, change_password_by_admin_uc: ChangePasswordByAdminUseCase, change_email_by_admin_uc: ChangeEmailByAdminUseCase, ban_student_uc: BanStudentUseCase, unban_student_uc: UnbanStudentUseCase, activate_student_uc: ActivateStudentUseCase, desactivate_student_uc: DesactivateStudentUseCase, edit_student_infos_uc: EditStudentInfosUseCase, get_all_admins_uc: GetAllAdminsUseCase):
+    def __init__(self, create_student_uc: CreateStudentUseCase, login_for_admin_uc: LoginForAdminUseCase, change_password_by_admin_uc: ChangePasswordByAdminUseCase, change_email_by_admin_uc: ChangeEmailByAdminUseCase, ban_student_uc: BanStudentUseCase, unban_student_uc: UnbanStudentUseCase, activate_student_uc: ActivateStudentUseCase, desactivate_student_uc: DesactivateStudentUseCase, edit_student_infos_uc: EditStudentInfosUseCase, get_all_admins_uc: GetAllAdminsUseCase, edit_punishment_period_uc: EditPunishmentPeriodUseCase):
         self.create_student_uc = create_student_uc
         self.login_for_admin_uc = login_for_admin_uc
         self.change_password_by_admin_uc = change_password_by_admin_uc
@@ -24,6 +24,7 @@ class AdminController:
         self.desactivate_student_uc = desactivate_student_uc
         self.edit_student_infos_uc = edit_student_infos_uc
         self.get_all_admins_uc = get_all_admins_uc
+        self.edit_punishment_period_uc = edit_punishment_period_uc
 
     async def create_student(self, first_name: str, last_name: str, email: str, registration_number: str, establishment: str) -> str:
         try:
@@ -117,6 +118,15 @@ class AdminController:
             return [AdminSchema.from_orm(admin) for admin in admins]
         except Exception as e:
             print("[debug][get_all_admins][controller] failed")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=400, detail=str(e))
+    async def edit_punishment_period(self, punishment_id: str, new_duration: int) -> None:
+        try:
+            print(f"[debug][edit_punishment_period][controller] request punishment_id={punishment_id} new_duration={new_duration}")
+            await self.edit_punishment_period_uc.edit_punishment_period(punishment_id=punishment_id, new_period=new_duration)
+            print("[debug][edit_punishment_period][controller] success")
+        except Exception as e:
+            print("[debug][edit_punishment_period][controller] failed")
             print(traceback.format_exc())
             raise HTTPException(status_code=400, detail=str(e))
         
