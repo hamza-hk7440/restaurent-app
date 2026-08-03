@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status, WebSocket, WebSocketDisconnect
 from typing import List
 import json
-from user_management.presentation.dependencies import get_admin_controller
+from user_management.presentation.dependencies import get_admin_controller, require_admin
 from user_management.presentation.controllers.admin_controller import AdminController
 from user_management.presentation.schemas.admin_schema import AdminSchema
 
@@ -88,6 +88,7 @@ async def edit_student_infos(
     return {"message": "Student infos edited successfully"}
 @router.get("/get-all-admins", status_code=status.HTTP_200_OK, response_model=List[AdminSchema])
 async def get_all_admins(
+    admin_user: dict = Depends(require_admin),
     admin_controller: AdminController = Depends(get_admin_controller)
 ):
     admins = await admin_controller.get_all_admins()
