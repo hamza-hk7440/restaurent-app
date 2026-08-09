@@ -2,7 +2,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
-
+from dataclasses import dataclass
 class TimeSlotResponseDTO(BaseModel):
     id: UUID
     restaurant_id: UUID
@@ -66,3 +66,39 @@ class MealAvailabilityResponseDTO(BaseModel):
             remaining_quantity=meal_availability.remaining_quantity,
             is_sold_out=meal_availability.is_sold_out
         )
+
+@dataclass(frozen=True)
+class GetAvailbleDaysQuery:
+    restaurant_id: UUID
+    start_date: datetime
+    days_ahead: int=7
+
+class AvailbleDaysResponseDTO(BaseModel):
+    date: Annotated[list[datetime], Field(description="The list of available days for reservations.")]
+    day_names: Annotated[list[str], Field(description="The list of day names corresponding to the available days.")]
+    is_available: Annotated[list[bool], Field(description="The list of availability status for each day.")]
+    is_operating_day: Annotated[list[bool], Field(description="The list of operating day status for each day.")]
+    model_config = ConfigDict(
+        extra="forbid",
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "date": ["2023-10-01", "2023-10-02", "2023-10-03"],
+                "day_names": ["Sunday", "Monday", "Tuesday"],
+                "is_available": [True, False, True],
+                "is_operating_day": [True, True, True]
+            }
+        }
+    )
+    @classmethod
+    def from_entity(cls, available_days) -> 'AvailbleDaysResponseDTO':
+        return cls(
+            date=[day.date for day in available_days],
+            day_names=[day.day_name for day in available_days],
+            is_available=[day.is_available for day in available_days],
+            is_operating_day=[day.is_operating_day for day in available_days]
+        )
+@dataclass(frozen=True)
+class GetAvailbleTimeSlotsQuery:
+    restaurant_id: UUID
+    date: datetime

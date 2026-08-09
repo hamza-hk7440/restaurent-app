@@ -78,7 +78,7 @@ class ModifyReservationRequestDTO(BaseModel):
             new_items=[ReservationItemCreateDTO.from_entity(item) for item in reservation_modification.new_items] if reservation_modification.new_items else None
         )
 class CancelReservationRequestDTO(BaseModel):
-    reason: Annotated[str, Field(description="The reason for canceling the reservation.")]
+    reason:Annotated[str, Field(description="The reason for canceling the reservation.")]
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={

@@ -1,6 +1,7 @@
 from typing import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
+from dataclasses import dataclass
 from datetime import datetime
 from reservation.domain.value_objects.meal_category import MealCategory
 from reservation.domain.value_objects.meal_availability import MealAvailability
@@ -131,3 +132,16 @@ class DailyMenuResponseDTO(BaseModel):
             is_available=daily_menu.is_available,
             meals=meals_dto
         )
+@dataclass(frozen=True)
+class GetRestaurentsQuery:
+    establishment_id: UUID
+    status: RestaurentStatus | None = None
+@dataclass(frozen=True)
+class GetRestaurentDetailsQuery:
+    restaurent_id: UUID
+@dataclass(frozen=True)
+class GetDailyMenuQuery:
+    restaurent_id: UUID
+    date: datetime
+    category: MealCategory | None = None
+    search_query: str | None = None

@@ -2,6 +2,8 @@ from typing import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
+from dataclasses import dataclass
+from reservation.domain.value_objects.reservation_status import ReservationStatus
 from reservation.domain.value_objects.reservation_status import ReservationStatus
 from reservation.domain.value_objects.reservation_modification_type import ReservationModificationType
 class ReservationItemResponseDTO(BaseModel):
@@ -151,3 +153,8 @@ class ReservationModificationResponseDTO(BaseModel):
             price_adjustment=reservation_modification.price_adjustment,
             created_at=reservation_modification.created_at
         )
+@dataclass(frozen=True)
+class GetStudentReservationsQuery:
+    student_id: UUID
+    filter_type: str="UPCOMING"
+    
