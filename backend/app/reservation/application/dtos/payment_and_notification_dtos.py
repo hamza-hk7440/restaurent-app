@@ -1,7 +1,8 @@
-from typing import Annotated
+from typing import Annotated,Optional, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
+from dataclasses import dataclass
 from reservation.domain.value_objects.notification_status import NotificationStatus
 from reservation.domain.value_objects.notification_type import NotificationType
 from reservation.domain.value_objects.transaction_type import TransactionType
@@ -45,6 +46,18 @@ class PaymentTransactionResponseDTO(BaseModel):
             reference_id=payment_transaction.reference_id,
             created_at=payment_transaction.created_at
         )
+class ProcessPaymentWebhookCommand(BaseModel):
+    provider: str = Field(description="Payment provider name, e.g., 'stripe', 'flouci'.")
+    event_type: str = Field(description="Type of webhook event received.")
+    reservation_id: UUID = Field(description="Target reservation ID.")
+    transaction_id: UUID = Field(description="Unique transaction ID.")
+    payment_status: str = Field(description="Raw status string from provider.")
+    amount: float = Field(description="Transaction monetary amount.")
+    payment_method: str = Field(default="online_gateway", description="Method used for payment.")
+    reference_id: str = Field(description="Provider external reference ID.")
+    payload: Optional[Dict[str, Any]] = Field(default=None, description="Raw webhook event payload.")
+
+    model_config = ConfigDict(extra="forbid")
 class NotificationResponseDTO(BaseModel):
     id: UUID
     student_id: UUID

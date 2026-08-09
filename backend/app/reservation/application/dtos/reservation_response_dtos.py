@@ -153,8 +153,26 @@ class ReservationModificationResponseDTO(BaseModel):
             price_adjustment=reservation_modification.price_adjustment,
             created_at=reservation_modification.created_at
         )
+class CancelReservationResponseDTO(BaseModel):
+    reservation_id: UUID
+    status: Annotated[ReservationStatus, Field(description="The status of the reservation after cancellation.")]
+    message: Annotated[str, Field(description="A message confirming the cancellation of the reservation.")]
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "reservation_id": "123e4567-e89b-12d3-a456-426614174005",
+                "status": "CANCELLED",
+                "message": "Your reservation has been successfully cancelled."
+            }
+        }
+    )
 @dataclass(frozen=True)
 class GetStudentReservationsQuery:
     student_id: UUID
     filter_type: str="UPCOMING"
-    
+@dataclass(frozen=True)
+class GetReservationDetailsQuery:
+    reservation_id: UUID
+    student_id: UUID
