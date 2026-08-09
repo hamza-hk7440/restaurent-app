@@ -5,7 +5,9 @@ from user_management.presentation.controllers.verify_email_controller import Ver
 from user_management.presentation.controllers.forget_password_controller import ForgetPasswordController
 from user_management.infrastructure.external.verify_email_repository import VerifyEmailRepository
 from user_management.infrastructure.external.forget_password_repository import ForgetPasswordRepository
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
 
 from user_management.application.use_cases.commands.edit_punishment_period_uc import EditPunishmentPeriodUseCase
 
@@ -47,6 +49,7 @@ from user_management.infrastructure.external.send_mail_repository import SendMai
 from user_management.infrastructure.external.password_generator_repository import PasswordGeneratorRepository
 from user_management.infrastructure.config.database import get_db
 from user_management.application.use_cases.commands.change_password_by_admin import ChangePasswordByAdminUseCase
+from user_management.infrastructure.database.models.admin_model import AdminModel
 def get_admin_controller(
         db_session: AsyncSession = Depends(get_db),  
 ) -> AdminController:
@@ -111,6 +114,58 @@ def get_admin_controller(
         user_repo=user_repo,
     )
     return AdminController(create_student_uc=create_student_uc, login_for_admin_uc=login_for_admin_uc, change_password_by_admin_uc=change_password_by_admin_uc, change_email_by_admin_uc=change_email_by_admin_uc, ban_student_uc=ban_student_uc, unban_student_uc=unban_student_uc, activate_student_uc=activate_student_uc, desactivate_student_uc=desactivate_student_uc, edit_student_infos_uc=edit_student_infos_uc, get_all_admins_uc=get_all_admins_uc, edit_punishment_period_uc=edit_punishment_period_uc)
+
+
+# OAuth2 scheme for bearer tokens (login path)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db_session: AsyncSession = Depends(get_db)) -> dict:
+    """Validate JWT, return minimal user payload with role.
+
+    This decodes the token using `JWTRepository.verify_token` to obtain the subject
+    (user id). It then tries to load a Student first, then an Admin to determine
+    the user's role. Raises 401 on invalid/expired tokens.
+    """
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials or token expired")
+
+    jwt_repo = JWTRepository(db_session)
+    try:
+        user_id = jwt_repo.verify_token(token)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials or token expired")
+
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials or token expired")
+
+    # Try student first
+    user_repo = UserRepository(db_session=db_session)
+    student = await user_repo.get_student_by_id(user_id)
+    if student:
+        return {"user_id": str(user_id), "role": "student", "user": student}
+
+    # Try admin by UUID
+    try:
+        admin_uuid = user_repo._normalize_uuid(user_id)
+    except Exception:
+        admin_uuid = None
+
+    if admin_uuid is not None:
+        result = await db_session.execute(select(AdminModel).filter(AdminModel.admin_id == admin_uuid))
+        admin_model = result.scalars().first()
+        if admin_model:
+            admin_entity = user_repo._map_admin_to_entity(admin_model)
+            return {"user_id": str(user_id), "role": "admin", "user": admin_entity}
+
+    # Not found
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials or token expired")
+
+
+async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+    return current_user
 def get_verify_email_controller(
         db_session: AsyncSession = Depends(get_db),
 ) -> VerifyEmailController:
