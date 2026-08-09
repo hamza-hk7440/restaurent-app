@@ -15,7 +15,7 @@ class IRestaurentRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_establishment(self, establishment_id: str) -> Optional[Restaurent]:
+    async def get_by_establishment(self, establishment_id: str, status: RestaurentStatus | None = None) -> Optional[Restaurent]:
         pass
     @abstractmethod
     async def get_all(self) -> list[Restaurent]:
