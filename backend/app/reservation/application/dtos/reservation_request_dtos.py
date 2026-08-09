@@ -1,4 +1,5 @@
-from typing import Annotated
+from typing import Annotated,List,Optional
+from dataclasses import dataclass
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
@@ -92,3 +93,93 @@ class CancelReservationRequestDTO(BaseModel):
         return cls(
             reason=reservation_cancellation.reason
         )
+@dataclass(frozen=True)
+class CreateReservationLockCommand:
+    student_id: UUID
+    restaurent_id: UUID
+    date: datetime
+    time_slot_id: UUID
+    items:List[ReservationItemCreateDTO]
+class ReservationLockResponseDTO(BaseModel):
+    lock_id: UUID
+    student_id: UUID
+    restaurent_id: UUID
+    time_slot_id: UUID
+    expires_at:datetime
+    is_active:bool
+
+    model_config= ConfigDict(
+        from_attributes=True,
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "lock_id": "123e4567-e89b-12d3-a456-426614174003",
+                "student_id": "123e4567-e89b-12d3-a456-426614174004",
+                "restaurent_id": "123e4567-e89b-12d3-a456-426614174000",
+                "time_slot_id": "123e4567-e89b-12d3-a456-426614174001",
+                "expires_at": "2023-10-01T12:30:00",
+                "is_active": True
+            }
+        }
+    )
+    @classmethod
+    def from_entity(cls, reservation_lock) -> 'ReservationLockResponseDTO':
+        return cls(
+            lock_id=reservation_lock.lock_id,
+            student_id=reservation_lock.student_id,
+            restaurent_id=reservation_lock.restaurent_id,
+            time_slot_id=reservation_lock.time_slot_id,
+            expires_at=reservation_lock.expires_at,
+            is_active=reservation_lock.is_active
+        )
+@dataclass(frozen=True)
+class CancelReservationCommand:
+    reservation_id: UUID
+    student_id: UUID
+    cancellation_reason: str
+class ValidateQrCodeCommand:
+    reservation_id: UUID
+    qr_code_data: str
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "reservation_id": "123e4567-e89b-12d3-a456-426614174005",
+                "qr_code_data": "QR_CODE_DATA_STRING"
+            }
+        }
+    )
+class ValidateQrCodeResponseDTO(BaseModel):
+    is_valid: bool
+    reservation_id: UUID
+    student_id: UUID
+    status: str
+    message: str
+    validated_at:datetime
+    model_config=ConfigDict(extra="forbid")
+class MarkReservationCompletedCommand(BaseModel):
+    reservation_id:UUID
+    student_id:Optional[UUID]
+    model_config=ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "reservation_id": "123e4567-e89b-12d3-a456-426614174005",
+                "student_id": "123e4567-e89b-12d3-a456-426614174006",
+            }
+        },
+    )
+class MarkReservationNoShowCommand(BaseModel):
+    reservation_id:UUID
+    restaurent_id:Optional[UUID]
+    reason:Optional[str]
+    model_config=ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "reservation_id": "123e4567-e89b-12d3-a456-426614174005",
+                "restaurent_id": "123e4567-e89b-12d3-a456-426614174000",
+                "reason": "Customer did not show up."
+            }
+        },
+    )
