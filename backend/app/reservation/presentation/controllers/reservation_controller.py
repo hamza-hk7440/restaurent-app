@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import httpx
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -9,6 +10,9 @@ from fastapi import HTTPException
 from reservation.application.dtos.availability_dtos import AvailbleDaysResponseDTO, TimeSlotResponseDTO
 from reservation.application.dtos.catalog_and_menu_dtos import CreateMealCommand, CreateRestaurantCommand, CreateTimeSlotCommand, DailyMenuResponseDTO, MealResponseDTO, ManageDailyMenuCommand, RestockMealCommand, RestockMealResponseDTO, RestaurentResponseDTO, UpsertDailyMenuMealCommand, UpsertDailyMenuMealResponseDTO
 from reservation.application.dtos.payment_and_notification_dtos import (
+    KonnectPaymentDetailsResponseDTO,
+    KonnectPaymentInitCommand,
+    KonnectPaymentInitResponseDTO,
     MarkNotificationReadCommand,
     NotificationResponseDTO,
     PaginatedNotificationsResponseDTO,
@@ -43,6 +47,7 @@ from reservation.domain.exceptions.domain_exceptions import (
     RestaurantNotFoundException,
     TimeSlotFullException,
     UnauthorizedAccessException,
+    InvalidPaymentWebhookException,
 )
 from reservation.domain.value_objects.meal_availability import MealAvailability
 from reservation.domain.value_objects.notification_status import NotificationStatus
@@ -65,6 +70,7 @@ from reservation.infrastructure.database.models import (
     ReservationModel,
     TimeSlotAvailabilityModel,
 )
+from user_management.infrastructure.config.settings import get_settings
 
 
 @dataclass(frozen=True)
@@ -286,7 +292,9 @@ class ReservationController:
                 confirmation_number=self._generate_confirmation_number(reservation_id),
                 qr_code_path=f"/qrcodes/{reservation_id}.png",
                 created_at=self._utcnow(),
-                updated_at=self._utcnow(),
+                modified_at=self._utcnow(),
+                canceled_at=None,
+                completed_at=None
             )
             await self._reservation_repo.create(reservation)
             await self._reserve_inventory(str(request.time_slot_id), request.date, meal_plans)
@@ -578,20 +586,151 @@ class ReservationController:
         return SendScheduledRemindersResponseDTO(total_processed=len(notifications), successful_sent=len(notifications), failed_sent=0, notification=notifications)
 
     async def process_payment_webhook(self, command: ProcessPaymentWebhookCommand):
+        existing = await self._payment_transaction_repo.get_by_reference_id(str(command.reference_id))
+        student_id = str(await self._get_reservation_student_id(command.reservation_id))
+        status_value = TransactionStatus.SUCCESS if command.payment_status.lower() in {"paid", "success", "succeeded", "completed"} else TransactionStatus.FAILED
+        tx_type = TransactionType.CHARGE if command.amount >= 0 else TransactionType.REFUND
+
+        if existing:
+            existing.student_id = student_id
+            existing.reservation_id = str(command.reservation_id)
+            existing.amount = command.amount
+            existing.transaction_type = tx_type
+            existing.status = status_value
+            existing.payment_method = command.payment_method
+            existing.reference_id = command.reference_id
+            return await self._payment_transaction_repo.save(existing)
+
         transaction = PaymentTransactionModel(
             id=str(command.transaction_id),
-            student_id=str(await self._get_reservation_student_id(command.reservation_id)),
+            student_id=student_id,
             reservation_id=str(command.reservation_id),
             amount=command.amount,
-            transaction_type=TransactionType.CHARGE if command.amount >= 0 else TransactionType.REFUND,
-            status=TransactionStatus.SUCCESS if command.payment_status.lower() in {"paid", "success", "succeeded"} else TransactionStatus.FAILED,
+            transaction_type=tx_type,
+            status=status_value,
             payment_method=command.payment_method,
             reference_id=command.reference_id,
-            payload=str(command.payload) if command.payload is not None else None,
             created_at=self._utcnow(),
         )
-        saved = await self._payment_transaction_repo.save(transaction)
-        return saved
+        return await self._payment_transaction_repo.save(transaction)
+
+    async def init_konnect_payment(self, command: KonnectPaymentInitCommand) -> KonnectPaymentInitResponseDTO:
+        settings = get_settings()
+        if not settings.KONNECT_API_KEY:
+            raise InvalidPaymentWebhookException("Konnect API key is not configured.")
+        if not settings.KONNECT_RECEIVER_WALLET_ID:
+            raise InvalidPaymentWebhookException("Konnect receiver wallet ID is not configured.")
+
+        reservation = await self._reservation_repo.get_by_id(str(command.reservation_id))
+        if not reservation:
+            raise ReservationNotFoundException(f"Reservation with ID {command.reservation_id} not found.")
+
+        amount_millimes = int(round(float(reservation.total_price) * 1000))
+        webhook_url = f"{settings.BACKEND_PUBLIC_URL.rstrip('/')}/reservations/payments/webhook"
+        payload = {
+            "receiverWalletId": settings.KONNECT_RECEIVER_WALLET_ID,
+            "token": command.token,
+            "amount": amount_millimes,
+            "type": "immediate",
+            "description": command.description or f"Reservation {reservation.confirmation_number}",
+            "acceptedPaymentMethods": command.acceptedPaymentMethods,
+            "lifespan": command.lifespan,
+            "checkoutForm": command.checkoutForm,
+            "addPaymentFeesToAmount": command.addPaymentFeesToAmount,
+            "firstName": command.firstName,
+            "lastName": command.lastName,
+            "phoneNumber": command.phoneNumber,
+            "email": command.email,
+            "orderId": str(command.reservation_id),
+            "webhook": webhook_url,
+            "theme": command.theme,
+        }
+        payload = {key: value for key, value in payload.items() if value is not None}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{settings.KONNECT_BASE_URL.rstrip('/')}/payments/init-payment",
+                headers={"x-api-key": settings.KONNECT_API_KEY, "Content-Type": "application/json"},
+                json=payload,
+            )
+        response.raise_for_status()
+        data = response.json()
+        await self._payment_transaction_repo.save(
+            PaymentTransactionModel(
+                id=str(uuid4()),
+                student_id=str(reservation.student_id),
+                reservation_id=str(reservation.id),
+                amount=float(reservation.total_price),
+                transaction_type=TransactionType.CHARGE,
+                status=TransactionStatus.PENDING,
+                payment_method="konnect",
+                reference_id=str(data["paymentRef"]),
+                created_at=self._utcnow(),
+            )
+        )
+        return KonnectPaymentInitResponseDTO(
+            pay_url=data["payUrl"],
+            payment_ref=data["paymentRef"],
+            reservation_id=reservation.id,
+            amount=amount_millimes,
+            token=command.token,
+            status="pending",
+        )
+
+    async def get_konnect_payment_details(self, payment_id: str) -> KonnectPaymentDetailsResponseDTO:
+        settings = get_settings()
+        if not settings.KONNECT_API_KEY:
+            raise InvalidPaymentWebhookException("Konnect API key is not configured.")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{settings.KONNECT_BASE_URL.rstrip('/')}/payments/{payment_id}",
+                headers={"x-api-key": settings.KONNECT_API_KEY},
+            )
+        response.raise_for_status()
+        data = response.json().get("payment", response.json())
+        return KonnectPaymentDetailsResponseDTO(
+            payment_id=str(data.get("id", payment_id)),
+            status=str(data.get("status", "")),
+            amount_due=data.get("amountDue"),
+            amount=data.get("amount"),
+            token=data.get("token"),
+            link=data.get("link"),
+            webhook=data.get("webhook"),
+            raw=data,
+        )
+
+    async def handle_konnect_webhook(self, payload: dict) -> PaymentTransactionModel:
+        payment_ref = payload.get("paymentRef") or payload.get("payment_ref") or payload.get("transaction_id") or payload.get("orderId")
+        if not payment_ref:
+            raise InvalidPaymentWebhookException("Webhook payload is missing payment reference.")
+
+        existing_transaction = await self._payment_transaction_repo.get_by_reference_id(str(payment_ref))
+        reservation_id = (
+            payload.get("orderId")
+            or payload.get("reservation_id")
+            or payload.get("reservationId")
+            or (existing_transaction.reservation_id if existing_transaction else None)
+        )
+        if not reservation_id:
+            raise InvalidPaymentWebhookException("Webhook payload is missing reservation/order identifier.")
+
+        payment_status = str(payload.get("status") or payload.get("paymentStatus") or payload.get("payment_status") or "").upper()
+        amount = payload.get("amount") or payload.get("paymentAmount") or 0
+        payment_method = payload.get("paymentMethod") or payload.get("payment_method") or "online_gateway"
+        transaction_id = payload.get("transaction_id") or (existing_transaction.id if existing_transaction else uuid4().hex)
+
+        command = ProcessPaymentWebhookCommand(
+            provider=str(payload.get("provider") or "konnect"),
+            event_type=str(payload.get("event_type") or "payment.processed"),
+            reservation_id=UUID(str(reservation_id)),
+            transaction_id=UUID(str(transaction_id)) if len(str(transaction_id)) == 36 else uuid4(),
+            payment_status=payment_status or "SUCCESS",
+            amount=float(amount),
+            payment_method=str(payment_method),
+            reference_id=str(payment_ref),
+            payload=payload,
+        )
+        return await self.process_payment_webhook(command)
 
     async def _get_reservation_student_id(self, reservation_id: UUID) -> UUID:
         reservation = await self._reservation_repo.get_by_id(str(reservation_id))

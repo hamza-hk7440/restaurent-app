@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+from uuid import UUID
 
+from reservation.application.dtos.payment_and_notification_dtos import KonnectPaymentInitCommand
 from reservation.application.dtos.reservation_request_dtos import CancelReservationRequestDTO, CreateReservationLockCommand, CreateReservationRequestDTO, ModifyReservationRequestDTO
 from reservation.presentation.dependencies import get_reservation_controller
 from reservation.presentation.controllers.reservation_controller import ReservationController
@@ -60,3 +62,37 @@ async def cancel_reservation(
     controller: ReservationController = Depends(get_reservation_controller),
 ):
     return await controller.cancel_reservation(reservation_id, student_id, request)
+
+
+@router.post("/{reservation_id}/payments/init")
+async def init_payment(
+    reservation_id: UUID,
+    command: KonnectPaymentInitCommand,
+    controller: ReservationController = Depends(get_reservation_controller),
+):
+    if command.reservation_id != reservation_id:
+        command = command.model_copy(update={"reservation_id": reservation_id})
+    return await controller.init_konnect_payment(command)
+
+
+@router.api_route("/payments/webhook", methods=["POST", "GET"])
+async def payment_webhook(
+    request: Request,
+    controller: ReservationController = Depends(get_reservation_controller),
+):
+    if request.method == "GET":
+        payload = dict(request.query_params)
+    else:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = dict(request.query_params)
+    return await controller.handle_konnect_webhook(payload)
+
+
+@router.get("/payments/{payment_id}")
+async def get_payment_details(
+    payment_id: str,
+    controller: ReservationController = Depends(get_reservation_controller),
+):
+    return await controller.get_konnect_payment_details(payment_id)

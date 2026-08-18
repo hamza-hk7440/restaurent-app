@@ -60,3 +60,6 @@ class InvalidMenuDataException(DomainException):
 class InvalidMenuStateException(DomainException):
         def __init__(self, message: str,error_code:str="INVALID_MENU_STATE"):
                 super().__init__(message,error_code)
+class InvalidPaymentWebhookException(DomainException):
+        def __init__(self, message: str,error_code:str="INVALID_PAYMENT_WEBHOOK"):
+                super().__init__(message,error_code)

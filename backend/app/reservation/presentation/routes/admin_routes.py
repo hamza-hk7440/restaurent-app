@@ -5,7 +5,7 @@ from reservation.application.dtos.catalog_and_menu_dtos import CreateMealCommand
 from reservation.domain.value_objects.restaurent_status import RestaurentStatus
 from reservation.presentation.controllers.reservation_controller import ReservationController
 from reservation.presentation.dependencies import get_reservation_controller
-from reservation.application.dtos.payment_and_notification_dtos import ProcessPaymentWebhookCommand, SendScheduledRemindersCommand
+from reservation.application.dtos.payment_and_notification_dtos import SendScheduledRemindersCommand
 
 router = APIRouter(prefix="/admin", tags=["reservation-admin"])
 
@@ -94,14 +94,6 @@ async def send_scheduled_reminders(
     controller: ReservationController = Depends(get_reservation_controller),
 ):
     return await controller.send_scheduled_reminders(command)
-
-
-@router.post("/payments/webhook")
-async def process_payment_webhook(
-    command: ProcessPaymentWebhookCommand,
-    controller: ReservationController = Depends(get_reservation_controller),
-):
-    return await controller.process_payment_webhook(command)
 
 
 @router.post("/daily-menus")

@@ -46,6 +46,49 @@ class PaymentTransactionResponseDTO(BaseModel):
             reference_id=payment_transaction.reference_id,
             created_at=payment_transaction.created_at
         )
+
+
+class KonnectPaymentInitCommand(BaseModel):
+    reservation_id: UUID = Field(description="Reservation to attach the payment to.")
+    description: str = Field(default="Reservation payment", description="Gateway payment description.")
+    token: str = Field(default="TND", description="Currency token.")
+    acceptedPaymentMethods: List[str] = Field(default_factory=lambda: ["wallet", "bank_card", "e-DINAR"])
+    lifespan: int = Field(default=10, ge=1, le=1440, description="Payment link lifespan in minutes.")
+    checkoutForm: bool = Field(default=True)
+    addPaymentFeesToAmount: bool = Field(default=True)
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    phoneNumber: Optional[str] = None
+    email: Optional[str] = None
+    theme: str = Field(default="dark")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KonnectPaymentInitResponseDTO(BaseModel):
+    pay_url: str
+    payment_ref: str
+    reservation_id: UUID
+    amount: float
+    token: str
+    status: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KonnectPaymentDetailsResponseDTO(BaseModel):
+    payment_id: str
+    status: str
+    amount_due: float | None = None
+    amount: float | None = None
+    token: str | None = None
+    link: str | None = None
+    webhook: str | None = None
+    raw: Dict[str, Any] | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ProcessPaymentWebhookCommand(BaseModel):
     provider: str = Field(description="Payment provider name, e.g., 'stripe', 'flouci'.")
     event_type: str = Field(description="Type of webhook event received.")

@@ -626,6 +626,12 @@ class PaymentTransactionRepository(_RepositoryBase):
         result = await self.session.execute(select(PaymentTransactionModel).where(PaymentTransactionModel.student_id == _as_str(student_id)).order_by(PaymentTransactionModel.created_at.desc()))
         return list(result.scalars().all())
 
+    async def get_by_reference_id(self, reference_id: str) -> Optional[PaymentTransactionModel]:
+        result = await self.session.execute(
+            select(PaymentTransactionModel).where(PaymentTransactionModel.reference_id == _as_str(reference_id))
+        )
+        return result.scalar_one_or_none()
+
 
 class ReservationRepository(_RepositoryBase):
     async def create(self, reservation) -> str:
