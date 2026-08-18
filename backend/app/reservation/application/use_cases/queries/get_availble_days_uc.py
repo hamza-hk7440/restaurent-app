@@ -19,7 +19,7 @@ class GetAvailableDaysUseCase:
     async def execute(self, query: GetAvailbleDaysQuery) -> List[AvailbleDaysResponseDTO]:
         restaurant = await self._get_restaurant_or_raise(query.restaurant_id)
         start = self._resolve_start_date(query.start_date)
-        end = start + timedelta(days=query.days_ahead)
+        end = start + timedelta(days=query.days_ahead - 1)
 
         existing_menus = await self._daily_menu_repo.get_by_restaurent_and_date_range(
             restaurant_id=query.restaurant_id,
@@ -41,7 +41,7 @@ class GetAvailableDaysUseCase:
     @staticmethod
     def _resolve_start_date(start_date: Optional[date]) -> date:
         if start_date is not None:
-            return start_date
+            return start_date.date() if hasattr(start_date, "date") else start_date
         return date.today()
 
     @classmethod

@@ -22,7 +22,8 @@ class GetStudentReservationsUseCase:
         ]
     @classmethod
     def _is_matching_filter(res_date:date,today:date,is_upcoming:bool)->bool:
+        res_day = res_date.date() if hasattr(res_date, "date") else res_date
         if is_upcoming:
-            return res_date >= today
+            return res_day >= today
         else:
-            return res_date < today
+            return res_day < today

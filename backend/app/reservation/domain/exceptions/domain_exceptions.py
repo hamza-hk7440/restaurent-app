@@ -48,4 +48,15 @@ class InvalidQRCodeException(DomainException):
 class InvalidReservationStateException(DomainException):
         def __init__(self, message: str,error_code:str="INVALID_RESERVATION_STATE"):
                 super().__init__(message,error_code)
-                
+class NotificationNotFoundException(DomainException):
+        def __init__(self, message: str,error_code:str="NOTIFICATION_NOT_FOUND"):
+                super().__init__(message,error_code)
+class InvalidNotificationStateException(DomainException):
+        def __init__(self, message: str,error_code:str="INVALID_NOTIFICATION_STATE"):
+                super().__init__(message,error_code)
+class InvalidMenuDataException(DomainException):
+        def __init__(self, message: str,error_code:str="INVALID_MENU_DATA"):
+                super().__init__(message,error_code)
+class InvalidMenuStateException(DomainException):
+        def __init__(self, message: str,error_code:str="INVALID_MENU_STATE"):
+                super().__init__(message,error_code)

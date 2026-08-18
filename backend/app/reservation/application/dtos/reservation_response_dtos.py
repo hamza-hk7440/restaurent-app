@@ -43,6 +43,7 @@ class ReservationResponseDTO(BaseModel):
     restaurent_name: Annotated[str, Field(description="The name of the restaurant where the reservation was made.")]
     date: Annotated[datetime, Field(description="The date of the reservation.")]
     time_slot_id: UUID
+    status: Annotated[ReservationStatus, Field(description="The status of the reservation.")]
     confirmation_code: Annotated[str, Field(description="The confirmation code for the reservation.")]
     qr_code_path: Annotated[str, Field(description="The path to the QR code for the reservation.")]
     items: Annotated[list[ReservationItemResponseDTO], Field(description="The list of reservation items.")]
@@ -82,6 +83,7 @@ class ReservationResponseDTO(BaseModel):
             restaurent_name=reservation.restaurent_name,
             date=reservation.date,
             time_slot_id=reservation.time_slot_id,
+            status=reservation.status,
             confirmation_code=reservation.confirmation_code,
             qr_code_path=reservation.qr_code_path,
             items=[ReservationItemResponseDTO.from_entity(item) for item in reservation.items],
