@@ -1,13 +1,13 @@
 from typing import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime,time
 from dataclasses import dataclass
 class TimeSlotResponseDTO(BaseModel):
     id: UUID
     restaurant_id: UUID
-    start_time: Annotated[datetime, Field(description="The start time of the time slot.")]
-    end_time: Annotated[datetime, Field(description="The end time of the time slot.")]
+    start_time: Annotated[time, Field(description="The start time of the time slot.")]
+    end_time: Annotated[time, Field(description="The end time of the time slot.")]
     capacity: Annotated[int, Field(description="The capacity of the time slot.")]
     available_seats: Annotated[int, Field(description="The number of available seats in the time slot.")]
     is_full: Annotated[bool, Field(description="Indicates whether the time slot is full or not.")]
@@ -17,8 +17,8 @@ class TimeSlotResponseDTO(BaseModel):
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "restaurant_id": "123e4567-e89b-12d3-a456-426614174000",
-                "start_time": "2023-10-01T12:00:00",
-                "end_time": "2023-10-01T14:00:00",
+                "start_time": "12:00:00",
+                "end_time": "14:00:00",
                 "capacity": 50,
                 "available_seats": 25,
                 "is_full": False

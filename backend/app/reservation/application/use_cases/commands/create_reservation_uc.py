@@ -94,7 +94,14 @@ class CreateReservationUseCase:
         meal_id_str = str(item.meal_id)
         meal = next((m for m in menu.meals if str(m.id) == meal_id_str), None)
         if not meal:
-            raise InsufficientMealStockException(f"Meal ID {meal_id_str} is not on the daily menu.")
+            available_meals = ", ".join(
+                f"{getattr(m, 'id', 'unknown')} ({getattr(m, 'name', 'unknown')})"
+                for m in getattr(menu, "meals", [])
+            ) or "none"
+            raise InsufficientMealStockException(
+                f"Meal ID {meal_id_str} is not on the daily menu. "
+                f"Available meal IDs: {available_meals}."
+            )
 
         available_qty = getattr(meal, "quantity_available", 0)
         if available_qty < item.quantity:

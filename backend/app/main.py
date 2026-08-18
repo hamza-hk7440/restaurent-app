@@ -8,6 +8,8 @@ from user_management.infrastructure.external.unban_students_automatically_reposi
     UnbanStudentsAutomaticallyRepository,
 )
 from user_management.presentation.api_router import api_router
+from reservation.presentation.api_router import api_router as reservation_router
+from reservation.presentation.middleware.exception_handler import register_reservation_exception_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ async def unban_students_job():
 async def lifespan(app: FastAPI):
     # 1. Initialize DB Engine and Session Factory
     await DatabaseConfig.init_db()
+    await DatabaseConfig.create_all_tables()
 
     # 2. Start Background Scheduler
     scheduler.add_job(unban_students_job, "interval", minutes=2)
@@ -48,6 +51,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(api_router)
+app.include_router(reservation_router)
+register_reservation_exception_handlers(app)
 
 
 @app.get("/health")

@@ -1,4 +1,4 @@
-from typing import Annotated,Optional, Dict, Any
+from typing import Annotated, List,Optional, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
@@ -94,3 +94,61 @@ class NotificationResponseDTO(BaseModel):
             status=notification.status,
             sent_at=notification.sent_at
         )
+class SendScheduledRemindersCommand(BaseModel):
+    target_daate:Optional[datetime] = Field(default=None, description="The target date for sending scheduled reminders. If not provided, defaults to the current date.")
+    limit:int=Field(default=100, ge=1, le=1000, description="The maximum number of reminders to send in a single batch. Must be between 1 and 1000.")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "target_daate": "2023-10-15T18:30:00Z",
+                "limit": 100
+            }
+        }
+    )
+class SendScheduledRemindersResponseDTO(BaseModel):
+    total_processed: int
+    successful_sent: int
+    failed_sent: int
+    notification:List[NotificationResponseDTO]
+    model_config = ConfigDict(
+        extra="forbid")
+class GetStudentNotificationsQuery(BaseModel):
+    student_id: UUID = Field(description="The ID of the student for whom to retrieve notifications.")
+    limit: int = Field(default=50, ge=1, le=1000, description="The maximum number of notifications to retrieve. Must be between 1 and 1000.")
+    offset: int = Field(default=0, ge=0, description="The number of notifications to skip before starting to collect the result set. Must be 0 or greater.")
+    status: Optional[NotificationStatus] = Field(default=None, description="Filter notifications by their status. If not provided, all statuses will be included.")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "student_id": "123e4567-e89b-12d3-a456-426614174006",
+                "limit": 50,
+                "offset": 0,
+                "status": "sent"
+            }
+        }
+    )
+class PaginatedNotificationsResponseDTO(BaseModel):
+    items: List[NotificationResponseDTO]
+    total: int
+    limit: int
+    offset: int
+    model_config = ConfigDict(
+        extra="forbid")
+class MarkNotificationReadCommand(BaseModel):
+    notification_id: UUID = Field(description="UUID of the notification to mark as read.")
+    student_id: Optional[UUID] = Field(
+        default=None, description="Optional student UUID to enforce notification ownership."
+    )
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "notification_id": "123e4567-e89b-12d3-a456-426614174008",
+                "student_id": "123e4567-e89b-12d3-a456-426614174006",
+            }
+        },
+    )
+
